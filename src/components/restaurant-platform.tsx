@@ -1,6 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react";
 import Image from "next/image";
 import {
   Activity,
@@ -19,10 +27,13 @@ import {
   GraduationCap,
   LayoutDashboard,
   ListChecks,
+  LogIn,
+  LogOut,
   Lock,
   Moon,
   PackagePlus,
   Printer,
+  RefreshCw,
   ReceiptText,
   Salad,
   ShieldCheck,
@@ -31,25 +42,34 @@ import {
   Store,
   Sun,
   Table2,
+  UserRound,
   Users,
   Utensils,
+  Wifi,
+  WifiOff,
   type LucideIcon,
 } from "lucide-react";
 import {
-  cashMovements,
   educationSteps,
-  employees,
-  orders,
-  productCategories,
-  products,
-  purchases,
-  rawMaterials,
-  recipes,
-  reportPoints,
-  restaurantTables,
-  suppliers,
   visualPanels,
 } from "@/lib/demo-data";
+import {
+  demoSnapshot,
+  loadRestaurantSnapshot,
+  type RestaurantSnapshot,
+} from "@/lib/data-source";
+import {
+  getCurrentAuthProfile,
+  persistKitchenTicket,
+  persistOrderItem,
+  persistOrderStatus,
+  persistTableStatus,
+  signInOperator,
+  signOutOperator,
+  type AuthProfile,
+  type OperationResult,
+} from "@/lib/operations";
+import { subscribeToRestaurantRealtime } from "@/lib/realtime";
 import {
   calculateRealNetUnitCost,
   calculateRecipeSummary,
@@ -66,11 +86,29 @@ import type {
   OrderStatus,
   PaymentMethod,
   Product,
+  ProductCategory,
   RawMaterial,
+  Recipe,
+  ReportPoint,
   RestaurantTable,
   RoleId,
   TableStatus,
 } from "@/lib/types";
+
+type ConnectionState = "demo" | "loading" | "ready" | "fallback";
+type AuthState = "demo" | "checking" | "anonymous" | "authenticated";
+type RealtimeState = "off" | "connecting" | "live" | "error";
+
+interface OperationNotice {
+  tone: "success" | "warning";
+  message: string;
+}
+
+const RestaurantDataContext = createContext<RestaurantSnapshot>(demoSnapshot);
+
+function useRestaurantData() {
+  return useContext(RestaurantDataContext);
+}
 
 const modules: Array<{
   id: ModuleId;
@@ -288,15 +326,161 @@ const paymentLabels: Record<PaymentMethod, string> = {
 };
 
 export function RestaurantPlatform() {
+  const [snapshot, setSnapshot] = useState<RestaurantSnapshot>(demoSnapshot);
+  const [connectionState, setConnectionState] = useState<ConnectionState>(() =>
+    isSupabaseConfigured() ? "loading" : "demo",
+  );
+  const [authState, setAuthState] = useState<AuthState>(() =>
+    isSupabaseConfigured() ? "checking" : "demo",
+  );
+  const [realtimeState, setRealtimeState] = useState<RealtimeState>(() =>
+    isSupabaseConfigured() ? "connecting" : "off",
+  );
+  const [lastRealtimeSync, setLastRealtimeSync] = useState<string | null>(null);
+  const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authOpen, setAuthOpen] = useState(false);
+  const [operationNotice, setOperationNotice] =
+    useState<OperationNotice | null>(null);
   const [activeModule, setActiveModule] = useState<ModuleId>("dashboard");
   const [selectedRole, setSelectedRole] = useState<RoleId>("administrator");
   const [darkMode, setDarkMode] = useState(false);
   const [tableState, setTableState] =
-    useState<RestaurantTable[]>(restaurantTables);
-  const [orderState, setOrderState] = useState<Order[]>(orders);
+    useState<RestaurantTable[]>(demoSnapshot.tables);
+  const [orderState, setOrderState] = useState<Order[]>(demoSnapshot.orders);
   const [selectedTableId, setSelectedTableId] = useState("t-2");
   const [selectedOrderId, setSelectedOrderId] = useState("ord-2");
   const [selectedRecipeId, setSelectedRecipeId] = useState("rec-lomo");
+
+  const applyRestaurantSnapshot = useCallback((nextSnapshot: RestaurantSnapshot) => {
+    setSnapshot(nextSnapshot);
+    setTableState(nextSnapshot.tables);
+    setOrderState(nextSnapshot.orders);
+    setSelectedTableId((current) =>
+      nextSnapshot.tables.some((table) => table.id === current)
+        ? current
+        : nextSnapshot.tables[0]?.id ?? "",
+    );
+    setSelectedOrderId((current) =>
+      nextSnapshot.orders.some((order) => order.id === current)
+        ? current
+        : nextSnapshot.orders[0]?.id ?? "",
+    );
+    setSelectedRecipeId((current) =>
+      nextSnapshot.recipes.some((recipe) => recipe.id === current)
+        ? current
+        : nextSnapshot.recipes[0]?.id ?? "",
+    );
+    setConnectionState(
+      nextSnapshot.source === "supabase" && !nextSnapshot.error
+        ? "ready"
+        : "fallback",
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
+    let cancelled = false;
+
+    loadRestaurantSnapshot().then((nextSnapshot) => {
+      if (cancelled) {
+        return;
+      }
+
+      applyRestaurantSnapshot(nextSnapshot);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyRestaurantSnapshot]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
+    let cancelled = false;
+    let reloadTimer: number | undefined;
+
+    const refreshFromRealtime = () => {
+      if (reloadTimer) {
+        window.clearTimeout(reloadTimer);
+      }
+
+      reloadTimer = window.setTimeout(() => {
+        loadRestaurantSnapshot().then((nextSnapshot) => {
+          if (cancelled) {
+            return;
+          }
+
+          applyRestaurantSnapshot(nextSnapshot);
+          setLastRealtimeSync(new Date().toISOString());
+        });
+      }, 250);
+    };
+
+    const unsubscribe = subscribeToRestaurantRealtime({
+      onChange: refreshFromRealtime,
+      onStatus: (status) => {
+        if (cancelled) {
+          return;
+        }
+
+        if (status === "SUBSCRIBED") {
+          setRealtimeState("live");
+          return;
+        }
+
+        if (
+          status === "CHANNEL_ERROR" ||
+          status === "TIMED_OUT" ||
+          status === "CLOSED"
+        ) {
+          setRealtimeState("error");
+          return;
+        }
+
+        setRealtimeState("connecting");
+      },
+    });
+
+    return () => {
+      cancelled = true;
+      if (reloadTimer) {
+        window.clearTimeout(reloadTimer);
+      }
+      unsubscribe();
+    };
+  }, [applyRestaurantSnapshot]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      return;
+    }
+
+    let cancelled = false;
+
+    getCurrentAuthProfile().then((profile) => {
+      if (cancelled) {
+        return;
+      }
+
+      setAuthProfile(profile);
+      setAuthState(profile ? "authenticated" : "anonymous");
+      if (profile) {
+        setSelectedRole(profile.role);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const role = getRoleProfile(selectedRole);
   const selectedTable =
@@ -304,8 +488,13 @@ export function RestaurantPlatform() {
   const selectedOrder =
     orderState.find((order) => order.id === selectedOrderId) ?? orderState[0];
   const selectedRecipe =
-    recipes.find((recipe) => recipe.id === selectedRecipeId) ?? recipes[0];
-  const recipeSummary = calculateRecipeSummary(selectedRecipe, rawMaterials);
+    snapshot.recipes.find((recipe) => recipe.id === selectedRecipeId) ??
+    snapshot.recipes[0] ??
+    demoSnapshot.recipes[0];
+  const recipeSummary = calculateRecipeSummary(
+    selectedRecipe,
+    snapshot.rawMaterials,
+  );
   const activeAccess = canAccessModule(selectedRole, activeModule);
 
   const dashboardStats = useMemo(() => {
@@ -316,7 +505,7 @@ export function RestaurantPlatform() {
     const occupiedTables = tableState.filter(
       (table) => table.status === "occupied",
     ).length;
-    const stockAlerts = rawMaterials.filter(
+    const stockAlerts = snapshot.rawMaterials.filter(
       (material) => material.stock <= material.minStock,
     ).length;
 
@@ -328,9 +517,40 @@ export function RestaurantPlatform() {
       foodCost: 31.4,
       kitchenAverage: 18,
     };
-  }, [orderState, tableState]);
+  }, [orderState, tableState, snapshot.rawMaterials]);
+
+  function showOperationResult(result: OperationResult) {
+    setOperationNotice({
+      tone: result.ok ? "success" : "warning",
+      message: result.message,
+    });
+  }
+
+  async function handleSignIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAuthState("checking");
+    const { result, profile } = await signInOperator(authEmail, authPassword);
+    showOperationResult(result);
+    setAuthProfile(profile);
+    setAuthState(profile ? "authenticated" : "anonymous");
+    if (profile) {
+      setSelectedRole(profile.role);
+      setAuthOpen(false);
+      setAuthPassword("");
+    }
+  }
+
+  async function handleSignOut() {
+    const result = await signOutOperator();
+    showOperationResult(result);
+    setAuthProfile(null);
+    setAuthState(isSupabaseConfigured() ? "anonymous" : "demo");
+  }
 
   function updateOrderStatus(orderId: string, status: OrderStatus) {
+    const order = orderState.find((item) => item.id === orderId);
+    const table = tableState.find((item) => item.number === order?.tableNumber);
+
     setOrderState((current) =>
       current.map((order) => (order.id === orderId ? { ...order, status } : order)),
     );
@@ -344,6 +564,10 @@ export function RestaurantPlatform() {
         ),
       );
     }
+
+    if (snapshot.source === "supabase") {
+      void persistOrderStatus(orderId, status, table?.id).then(showOperationResult);
+    }
   }
 
   function cycleTableStatus(tableId: string) {
@@ -353,14 +577,20 @@ export function RestaurantPlatform() {
       cleaning: "free",
       reserved: "occupied",
     };
+    const table = tableState.find((item) => item.id === tableId);
+    const status = table ? nextStatus[table.status] : "free";
 
     setTableState((current) =>
       current.map((table) =>
         table.id === tableId
-          ? { ...table, status: nextStatus[table.status] }
+          ? { ...table, status }
           : table,
       ),
     );
+
+    if (snapshot.source === "supabase") {
+      void persistTableStatus(tableId, status).then(showOperationResult);
+    }
   }
 
   function addProductToSelectedOrder(product: Product) {
@@ -390,6 +620,19 @@ export function RestaurantPlatform() {
         };
       }),
     );
+
+    if (snapshot.source === "supabase" && selectedOrder) {
+      void persistOrderItem(selectedOrder, product).then(showOperationResult);
+    }
+  }
+
+  function sendOrderToKitchen(orderId: string) {
+    const order = orderState.find((item) => item.id === orderId);
+    updateOrderStatus(orderId, "pending");
+
+    if (snapshot.source === "supabase" && order) {
+      void persistKitchenTicket(order).then(showOperationResult);
+    }
   }
 
   const content = activeAccess ? (
@@ -421,10 +664,12 @@ export function RestaurantPlatform() {
         return (
           <OrdersModule
             orders={orderState}
+            products={snapshot.products}
+            productCategories={snapshot.productCategories}
             selectedOrder={selectedOrder}
             onSelectOrder={setSelectedOrderId}
             onAddProduct={addProductToSelectedOrder}
-            onSendToKitchen={(orderId) => updateOrderStatus(orderId, "pending")}
+            onSendToKitchen={sendOrderToKitchen}
           />
         );
       case "kitchen":
@@ -434,7 +679,12 @@ export function RestaurantPlatform() {
       case "cash":
         return <CashModule orders={orderState} />;
       case "products":
-        return <ProductsModule onAddProduct={addProductToSelectedOrder} />;
+        return (
+          <ProductsModule
+            products={snapshot.products}
+            onAddProduct={addProductToSelectedOrder}
+          />
+        );
       case "recipes":
         return (
           <RecipesModule
@@ -442,6 +692,7 @@ export function RestaurantPlatform() {
             onSelectRecipe={setSelectedRecipeId}
             selectedRecipe={selectedRecipe}
             recipeSummary={recipeSummary}
+            recipes={snapshot.recipes}
           />
         );
       case "inventory":
@@ -462,7 +713,8 @@ export function RestaurantPlatform() {
   }
 
   return (
-    <div className={darkMode ? "dark" : ""}>
+    <RestaurantDataContext.Provider value={snapshot}>
+      <div className={darkMode ? "dark" : ""}>
       <div className="min-h-screen overflow-x-hidden bg-[#f5f7f8] text-zinc-950 transition-colors dark:bg-[#101112] dark:text-zinc-100">
         <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-[#101112]/90">
           <div className="flex min-w-0 flex-col gap-4 px-4 py-4 lg:px-6">
@@ -482,16 +734,26 @@ export function RestaurantPlatform() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
-                    isSupabaseConfigured()
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                      : "border-amber-300 bg-amber-50 text-amber-900"
-                  }`}
-                >
-                  <Database className="h-4 w-4" />
-                  {isSupabaseConfigured() ? "Supabase conectado" : "Modo demo local"}
-                </span>
+                <ConnectionBadge
+                  status={connectionState}
+                  error={snapshot.error}
+                />
+                <RealtimeBadge
+                  status={realtimeState}
+                  lastSync={lastRealtimeSync}
+                />
+                <AuthControl
+                  authState={authState}
+                  profile={authProfile}
+                  email={authEmail}
+                  password={authPassword}
+                  open={authOpen}
+                  onEmailChange={setAuthEmail}
+                  onPasswordChange={setAuthPassword}
+                  onOpenChange={setAuthOpen}
+                  onSignIn={handleSignIn}
+                  onSignOut={handleSignOut}
+                />
                 <button
                   type="button"
                   onClick={() => setDarkMode((current) => !current)}
@@ -519,6 +781,12 @@ export function RestaurantPlatform() {
                 </button>
               ))}
             </div>
+            {operationNotice ? (
+              <OperationNoticeBar
+                notice={operationNotice}
+                onDismiss={() => setOperationNotice(null)}
+              />
+            ) : null}
           </div>
         </header>
 
@@ -569,7 +837,8 @@ export function RestaurantPlatform() {
           <main className="min-w-0 p-4 md:p-6">{content}</main>
         </div>
       </div>
-    </div>
+      </div>
+    </RestaurantDataContext.Provider>
   );
 }
 
@@ -753,12 +1022,16 @@ function TablesModule({
 
 function OrdersModule({
   orders,
+  products,
+  productCategories,
   selectedOrder,
   onSelectOrder,
   onAddProduct,
   onSendToKitchen,
 }: {
   orders: Order[];
+  products: Product[];
+  productCategories: ProductCategory[];
   selectedOrder: Order;
   onSelectOrder: (orderId: string) => void;
   onAddProduct: (product: Product) => void;
@@ -780,7 +1053,7 @@ function OrdersModule({
                 key={category.id}
                 className="inline-flex h-9 shrink-0 items-center rounded-lg border border-black/10 bg-white px-3 text-sm font-semibold dark:border-white/10 dark:bg-zinc-900"
               >
-                <span className={`mr-2 h-2 w-2 rounded-full ${category.color}`} />
+                <CategoryColorDot color={category.color} />
                 {category.name}
               </span>
             ))}
@@ -975,6 +1248,7 @@ function KitchenModule({
 }
 
 function CashModule({ orders }: { orders: Order[] }) {
+  const { cashMovements } = useRestaurantData();
   const totals = orders.reduce(
     (acc, order, index) => {
       const method: PaymentMethod =
@@ -1061,7 +1335,13 @@ function CashModule({ orders }: { orders: Order[] }) {
   );
 }
 
-function ProductsModule({ onAddProduct }: { onAddProduct: (product: Product) => void }) {
+function ProductsModule({
+  products,
+  onAddProduct,
+}: {
+  products: Product[];
+  onAddProduct: (product: Product) => void;
+}) {
   return (
     <div className="space-y-6">
       <SectionHeader
@@ -1089,11 +1369,13 @@ function RecipesModule({
   onSelectRecipe,
   selectedRecipe,
   recipeSummary,
+  recipes,
 }: {
   selectedRecipeId: string;
   onSelectRecipe: (recipeId: string) => void;
-  selectedRecipe: (typeof recipes)[number];
+  selectedRecipe: Recipe;
   recipeSummary: ReturnType<typeof calculateRecipeSummary>;
+  recipes: Recipe[];
 }) {
   return (
     <div className="space-y-6">
@@ -1117,14 +1399,16 @@ function RecipesModule({
                     : "border-black/10 bg-white hover:bg-zinc-50 dark:border-white/10 dark:bg-zinc-900"
                 }`}
               >
-                <Image
-                  src={recipe.image}
-                  alt={recipe.name}
-                  width={64}
-                  height={56}
-                  unoptimized
-                  className="h-14 w-16 rounded-md object-cover"
-                />
+                <span className="relative h-14 w-16 shrink-0 overflow-hidden rounded-md">
+                  <Image
+                    src={recipe.image}
+                    alt={recipe.name}
+                    fill
+                    unoptimized
+                    sizes="64px"
+                    className="object-cover"
+                  />
+                </span>
                 <div>
                   <p className="font-semibold">{recipe.name}</p>
                   <p className="text-sm text-zinc-500">{recipe.category}</p>
@@ -1138,14 +1422,16 @@ function RecipesModule({
           <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
             <Panel title={selectedRecipe.name} icon={Calculator}>
               <div className="grid gap-4 md:grid-cols-[240px_1fr]">
-                <Image
-                  src={selectedRecipe.image}
-                  alt={selectedRecipe.name}
-                  width={480}
-                  height={320}
-                  unoptimized
-                  className="h-56 w-full rounded-lg object-cover"
-                />
+                <div className="relative h-56 w-full overflow-hidden rounded-lg">
+                  <Image
+                    src={selectedRecipe.image}
+                    alt={selectedRecipe.name}
+                    fill
+                    unoptimized
+                    sizes="(min-width: 768px) 240px, 100vw"
+                    className="object-cover"
+                  />
+                </div>
                 <div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <InfoPill label="Porciones" value={selectedRecipe.portions.toString()} />
@@ -1218,6 +1504,7 @@ function RecipesModule({
 }
 
 function InventoryModule() {
+  const { rawMaterials } = useRestaurantData();
   const lowStock = rawMaterials.filter((material) => material.stock <= material.minStock);
 
   return (
@@ -1263,6 +1550,8 @@ function InventoryModule() {
 }
 
 function PurchasesModule() {
+  const { purchases, suppliers } = useRestaurantData();
+
   return (
     <div className="space-y-6">
       <SectionHeader
@@ -1324,6 +1613,8 @@ function PurchasesModule() {
 }
 
 function ReportsModule() {
+  const { reportPoints } = useRestaurantData();
+
   return (
     <div className="space-y-6">
       <SectionHeader
@@ -1342,7 +1633,7 @@ function ReportsModule() {
       <div className="grid gap-4 xl:grid-cols-2">
         <Panel title="Ventas y margen" icon={BarChart3}>
           <div className="h-[320px] min-w-0">
-            <SalesBarsChart />
+            <SalesBarsChart reportPoints={reportPoints} />
           </div>
         </Panel>
         <Panel title="Indicadores criticos" icon={Activity}>
@@ -1371,6 +1662,8 @@ function ReportsModule() {
 }
 
 function FoodSafetyModule() {
+  const { rawMaterials } = useRestaurantData();
+
   return (
     <div className="space-y-6">
       <SectionHeader
@@ -1427,6 +1720,8 @@ function FoodSafetyModule() {
 }
 
 function EmployeesModule() {
+  const { employees } = useRestaurantData();
+
   return (
     <div className="space-y-6">
       <SectionHeader
@@ -1665,14 +1960,16 @@ function ProductTile({
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-[#18191b]">
-      <Image
-        src={product.image}
-        alt={product.name}
-        width={640}
-        height={360}
-        unoptimized
-        className="h-36 w-full object-cover"
-      />
+      <div className="relative h-36 w-full overflow-hidden">
+        <Image
+          src={product.image}
+          alt={product.name}
+          fill
+          unoptimized
+          sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
+          className="object-cover"
+        />
+      </div>
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -1827,6 +2124,222 @@ function MetricCard({
   );
 }
 
+function ConnectionBadge({
+  status,
+  error,
+}: {
+  status: ConnectionState;
+  error?: string;
+}) {
+  const meta: Record<
+    ConnectionState,
+    { label: string; className: string; title?: string }
+  > = {
+    demo: {
+      label: "Modo demo local",
+      className: "border-amber-300 bg-amber-50 text-amber-900",
+    },
+    loading: {
+      label: "Conectando Supabase",
+      className: "border-sky-300 bg-sky-50 text-sky-900",
+    },
+    ready: {
+      label: "Supabase conectado",
+      className: "border-emerald-300 bg-emerald-50 text-emerald-900",
+    },
+    fallback: {
+      label: "Demo por fallback",
+      className: "border-red-300 bg-red-50 text-red-900",
+      title: error,
+    },
+  };
+
+  return (
+    <span
+      title={meta[status].title}
+      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${meta[status].className}`}
+    >
+      <Database className="h-4 w-4" />
+      {meta[status].label}
+    </span>
+  );
+}
+
+function RealtimeBadge({
+  status,
+  lastSync,
+}: {
+  status: RealtimeState;
+  lastSync: string | null;
+}) {
+  const meta: Record<RealtimeState, { label: string; className: string }> = {
+    off: {
+      label: "Realtime demo",
+      className: "border-zinc-200 bg-white text-zinc-700",
+    },
+    connecting: {
+      label: "Realtime conectando",
+      className: "border-sky-300 bg-sky-50 text-sky-900",
+    },
+    live: {
+      label: "Tiempo real activo",
+      className: "border-emerald-300 bg-emerald-50 text-emerald-900",
+    },
+    error: {
+      label: "Realtime sin canal",
+      className: "border-red-300 bg-red-50 text-red-900",
+    },
+  };
+  const Icon = status === "live" ? Wifi : WifiOff;
+  const title = lastSync
+    ? `Ultima sincronizacion: ${new Date(lastSync).toLocaleTimeString("es-CL")}`
+    : undefined;
+
+  return (
+    <span
+      title={title}
+      className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${meta[status].className}`}
+    >
+      {status === "connecting" ? (
+        <RefreshCw className="h-4 w-4 animate-spin" />
+      ) : (
+        <Icon className="h-4 w-4" />
+      )}
+      {meta[status].label}
+    </span>
+  );
+}
+
+function AuthControl({
+  authState,
+  profile,
+  email,
+  password,
+  open,
+  onEmailChange,
+  onPasswordChange,
+  onOpenChange,
+  onSignIn,
+  onSignOut,
+}: {
+  authState: AuthState;
+  profile: AuthProfile | null;
+  email: string;
+  password: string;
+  open: boolean;
+  onEmailChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onOpenChange: (value: boolean) => void;
+  onSignIn: (event: FormEvent<HTMLFormElement>) => void;
+  onSignOut: () => void;
+}) {
+  if (authState === "demo") {
+    return (
+      <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-200">
+        <UserRound className="h-4 w-4" />
+        Sesion demo
+      </span>
+    );
+  }
+
+  if (profile) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-emerald-200 bg-white px-3 text-sm font-medium text-emerald-900 dark:border-white/10 dark:bg-zinc-900 dark:text-emerald-200">
+          <UserRound className="h-4 w-4" />
+          {profile.name}
+        </span>
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="inline-flex h-10 items-center gap-2 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium transition hover:bg-zinc-100 dark:border-white/10 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+        >
+          <LogOut className="h-4 w-4" />
+          Salir
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        className="inline-flex h-10 items-center gap-2 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium transition hover:bg-zinc-100 dark:border-white/10 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+      >
+        {authState === "checking" ? (
+          <RefreshCw className="h-4 w-4 animate-spin" />
+        ) : (
+          <LogIn className="h-4 w-4" />
+        )}
+        Iniciar sesion
+      </button>
+      {open ? (
+        <form
+          onSubmit={onSignIn}
+          className="absolute right-0 top-12 z-40 w-[min(88vw,320px)] rounded-lg border border-black/10 bg-white p-3 shadow-xl dark:border-white/10 dark:bg-zinc-900"
+        >
+          <label className="block text-xs font-semibold uppercase text-zinc-500">
+            Email
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => onEmailChange(event.target.value)}
+            className="mt-1 h-10 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-zinc-900 dark:border-white/10 dark:bg-zinc-950"
+            required
+          />
+          <label className="mt-3 block text-xs font-semibold uppercase text-zinc-500">
+            Password
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => onPasswordChange(event.target.value)}
+            className="mt-1 h-10 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-zinc-900 dark:border-white/10 dark:bg-zinc-950"
+            required
+          />
+          <button
+            type="submit"
+            className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-zinc-950 px-3 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950"
+          >
+            <LogIn className="h-4 w-4" />
+            Entrar
+          </button>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
+function OperationNoticeBar({
+  notice,
+  onDismiss,
+}: {
+  notice: OperationNotice;
+  onDismiss: () => void;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-sm font-medium ${
+        notice.tone === "success"
+          ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+          : "border-amber-200 bg-amber-50 text-amber-950"
+      }`}
+    >
+      <span>{notice.message}</span>
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="rounded-md px-2 py-1 text-xs font-semibold hover:bg-black/5"
+      >
+        Cerrar
+      </button>
+    </div>
+  );
+}
+
 function StatusBadge({ status }: { status: OrderStatus }) {
   const meta = orderStatusMeta[status];
   return (
@@ -1834,6 +2347,19 @@ function StatusBadge({ status }: { status: OrderStatus }) {
       {meta.label}
     </span>
   );
+}
+
+function CategoryColorDot({ color }: { color: string }) {
+  if (color.startsWith("#") || color.startsWith("rgb")) {
+    return (
+      <span
+        className="mr-2 h-2 w-2 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+    );
+  }
+
+  return <span className={`mr-2 h-2 w-2 rounded-full ${color}`} />;
 }
 
 function OrderSummaryRow({ order }: { order: Order }) {
@@ -1898,6 +2424,7 @@ function ArchitectureList({ items }: { items: string[] }) {
 }
 
 function SalesTrendChart() {
+  const { reportPoints } = useRestaurantData();
   const maxSales = Math.max(...reportPoints.map((point) => point.sales));
   const salesPoints = reportPoints
     .map((point, index) => {
@@ -1971,7 +2498,7 @@ function SalesTrendChart() {
   );
 }
 
-function SalesBarsChart() {
+function SalesBarsChart({ reportPoints }: { reportPoints: ReportPoint[] }) {
   const maxSales = Math.max(...reportPoints.map((point) => point.sales));
 
   return (

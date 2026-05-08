@@ -70,18 +70,6 @@ begin
 end;
 $$;
 
-create or replace function public.current_app_role()
-returns text
-language sql
-stable
-as $$
-  select coalesce(
-    auth.jwt() ->> 'user_role',
-    auth.jwt() -> 'app_metadata' ->> 'role',
-    'anonymous'
-  );
-$$;
-
 create table if not exists public.roles (
   id public.app_role primary key,
   name text not null,
@@ -99,6 +87,116 @@ create table if not exists public.users (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create or replace function public.current_app_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    auth.jwt() ->> 'user_role',
+    auth.jwt() -> 'app_metadata' ->> 'role',
+    (select role_id::text from public.users where id = auth.uid()),
+    'anonymous'
+  );
+$$;
+
+create or replace function public.role_from_auth_metadata(raw_role text)
+returns public.app_role
+language sql
+immutable
+as $$
+  select case
+    when raw_role in (
+      'administrator',
+      'supervisor',
+      'cashier',
+      'waiter',
+      'cook',
+      'chef',
+      'warehouse'
+    ) then raw_role::public.app_role
+    else 'waiter'::public.app_role
+  end;
+$$;
+
+create or replace function public.handle_auth_user_profile()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.users (id, role_id, full_name, email)
+  values (
+    new.id,
+    public.role_from_auth_metadata(new.raw_app_meta_data ->> 'role'),
+    coalesce(new.raw_user_meta_data ->> 'full_name', split_part(new.email, '@', 1), 'Operador'),
+    new.email
+  )
+  on conflict (id) do update
+  set email = excluded.email,
+      full_name = excluded.full_name,
+      role_id = case
+        when new.raw_app_meta_data ? 'role' then excluded.role_id
+        else public.users.role_id
+      end,
+      updated_at = now();
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_profile_created on auth.users;
+
+create trigger on_auth_user_profile_created
+after insert or update on auth.users
+for each row execute function public.handle_auth_user_profile();
+
+create or replace function public.ensure_current_user_profile()
+returns public.users
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  profile public.users%rowtype;
+  jwt_role text;
+  jwt_email text;
+  jwt_name text;
+begin
+  if auth.uid() is null then
+    raise exception 'No authenticated user';
+  end if;
+
+  jwt_role := auth.jwt() -> 'app_metadata' ->> 'role';
+  jwt_email := coalesce(auth.jwt() ->> 'email', '');
+  jwt_name := coalesce(
+    auth.jwt() -> 'user_metadata' ->> 'full_name',
+    split_part(jwt_email, '@', 1),
+    'Operador'
+  );
+
+  insert into public.users (id, role_id, full_name, email)
+  values (
+    auth.uid(),
+    public.role_from_auth_metadata(jwt_role),
+    jwt_name,
+    jwt_email
+  )
+  on conflict (id) do update
+  set email = excluded.email,
+      full_name = excluded.full_name,
+      updated_at = now()
+  returning * into profile;
+
+  return profile;
+end;
+$$;
+
+grant execute on function public.ensure_current_user_profile() to authenticated;
 
 create table if not exists public.employees (
   id uuid primary key default gen_random_uuid(),
@@ -509,27 +607,166 @@ begin
 end $$;
 
 do $$
+declare
+  target_table text;
 begin
-  execute 'alter publication supabase_realtime add table public.tables';
-exception when duplicate_object or undefined_object then null;
+  foreach target_table in array array[
+    'roles',
+    'employees',
+    'tables',
+    'orders',
+    'order_items',
+    'products',
+    'product_categories',
+    'recipes',
+    'recipe_ingredients',
+    'raw_materials',
+    'inventory_movements',
+    'suppliers',
+    'purchases',
+    'purchase_items',
+    'cash_registers',
+    'cash_movements',
+    'food_safety_logs',
+    'reports',
+    'settings',
+    'kitchen_tickets'
+  ]
+  loop
+    execute format('drop policy if exists "anon demo read" on public.%I', target_table);
+    execute format(
+      'create policy "anon demo read" on public.%I for select to anon using (true)',
+      target_table
+    );
+  end loop;
 end $$;
 
 do $$
+declare
+  target_table text;
+  roles_clause text;
 begin
-  execute 'alter publication supabase_realtime add table public.orders';
-exception when duplicate_object or undefined_object then null;
+  roles_clause := '''administrator'', ''supervisor''';
+  foreach target_table in array array['roles', 'users', 'employees', 'settings']
+  loop
+    execute format('drop policy if exists "manager write" on public.%I', target_table);
+    execute format('drop policy if exists "role write" on public.%I', target_table);
+    execute format(
+      'create policy "role write" on public.%I for all to authenticated using (public.current_app_role() in (%s)) with check (public.current_app_role() in (%s))',
+      target_table,
+      roles_clause,
+      roles_clause
+    );
+  end loop;
+
+  roles_clause := '''administrator'', ''supervisor'', ''waiter''';
+  foreach target_table in array array['tables']
+  loop
+    execute format('drop policy if exists "manager write" on public.%I', target_table);
+    execute format('drop policy if exists "role write" on public.%I', target_table);
+    execute format(
+      'create policy "role write" on public.%I for all to authenticated using (public.current_app_role() in (%s)) with check (public.current_app_role() in (%s))',
+      target_table,
+      roles_clause,
+      roles_clause
+    );
+  end loop;
+
+  roles_clause := '''administrator'', ''supervisor'', ''waiter'', ''cashier'', ''cook'', ''chef''';
+  foreach target_table in array array['orders', 'order_items', 'kitchen_tickets']
+  loop
+    execute format('drop policy if exists "manager write" on public.%I', target_table);
+    execute format('drop policy if exists "role write" on public.%I', target_table);
+    execute format(
+      'create policy "role write" on public.%I for all to authenticated using (public.current_app_role() in (%s)) with check (public.current_app_role() in (%s))',
+      target_table,
+      roles_clause,
+      roles_clause
+    );
+  end loop;
+
+  roles_clause := '''administrator'', ''chef''';
+  foreach target_table in array array['products', 'product_categories', 'recipes', 'recipe_ingredients']
+  loop
+    execute format('drop policy if exists "manager write" on public.%I', target_table);
+    execute format('drop policy if exists "role write" on public.%I', target_table);
+    execute format(
+      'create policy "role write" on public.%I for all to authenticated using (public.current_app_role() in (%s)) with check (public.current_app_role() in (%s))',
+      target_table,
+      roles_clause,
+      roles_clause
+    );
+  end loop;
+
+  roles_clause := '''administrator'', ''supervisor'', ''chef'', ''warehouse''';
+  foreach target_table in array array[
+    'raw_materials',
+    'inventory_movements',
+    'suppliers',
+    'purchases',
+    'purchase_items',
+    'food_safety_logs'
+  ]
+  loop
+    execute format('drop policy if exists "manager write" on public.%I', target_table);
+    execute format('drop policy if exists "role write" on public.%I', target_table);
+    execute format(
+      'create policy "role write" on public.%I for all to authenticated using (public.current_app_role() in (%s)) with check (public.current_app_role() in (%s))',
+      target_table,
+      roles_clause,
+      roles_clause
+    );
+  end loop;
+
+  roles_clause := '''administrator'', ''supervisor'', ''cashier''';
+  foreach target_table in array array['cash_registers', 'cash_movements']
+  loop
+    execute format('drop policy if exists "manager write" on public.%I', target_table);
+    execute format('drop policy if exists "role write" on public.%I', target_table);
+    execute format(
+      'create policy "role write" on public.%I for all to authenticated using (public.current_app_role() in (%s)) with check (public.current_app_role() in (%s))',
+      target_table,
+      roles_clause,
+      roles_clause
+    );
+  end loop;
+
+  roles_clause := '''administrator'', ''supervisor'', ''chef'', ''warehouse'', ''cashier''';
+  foreach target_table in array array['reports']
+  loop
+    execute format('drop policy if exists "manager write" on public.%I', target_table);
+    execute format('drop policy if exists "role write" on public.%I', target_table);
+    execute format(
+      'create policy "role write" on public.%I for all to authenticated using (public.current_app_role() in (%s)) with check (public.current_app_role() in (%s))',
+      target_table,
+      roles_clause,
+      roles_clause
+    );
+  end loop;
 end $$;
 
 do $$
+declare
+  target_table text;
 begin
-  execute 'alter publication supabase_realtime add table public.order_items';
-exception when duplicate_object or undefined_object then null;
-end $$;
-
-do $$
-begin
-  execute 'alter publication supabase_realtime add table public.kitchen_tickets';
-exception when duplicate_object or undefined_object then null;
+  foreach target_table in array array[
+    'tables',
+    'orders',
+    'order_items',
+    'kitchen_tickets',
+    'products',
+    'raw_materials',
+    'inventory_movements',
+    'cash_movements',
+    'purchases',
+    'purchase_items'
+  ]
+  loop
+    begin
+      execute format('alter publication supabase_realtime add table public.%I', target_table);
+    exception when duplicate_object or undefined_object then null;
+    end;
+  end loop;
 end $$;
 
 do $$
@@ -559,4 +796,3 @@ begin
     );
   end loop;
 end $$;
-
