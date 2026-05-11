@@ -8,6 +8,7 @@ import {
   foodSafetyLogs as demoFoodSafetyLogs,
   inventoryMovements as demoInventoryMovements,
   orders as demoOrders,
+  operationalDocuments as demoOperationalDocuments,
   productCategories as demoProductCategories,
   products as demoProducts,
   purchaseItems as demoPurchaseItems,
@@ -17,6 +18,7 @@ import {
   reservations as demoReservations,
   reportPoints as demoReportPoints,
   restaurantTables as demoRestaurantTables,
+  restaurantSettings as demoRestaurantSettings,
   suppliers as demoSuppliers,
 } from "@/lib/demo-data";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
@@ -31,6 +33,8 @@ import type {
   InventoryMovement,
   Order,
   OrderStatus,
+  OperationalDocument,
+  OperationalDocumentType,
   PaymentMethod,
   Product,
   ProductCategory,
@@ -43,6 +47,7 @@ import type {
   ReservationStatus,
   ReportPoint,
   RestaurantTable,
+  RestaurantSettings,
   RoleId,
   Supplier,
   TableStatus,
@@ -71,8 +76,10 @@ export interface RestaurantSnapshot {
   customers: Customer[];
   reservations: Reservation[];
   customerInteractions: CustomerInteraction[];
+  operationalDocuments: OperationalDocument[];
   auditLogs: AuditLog[];
   reportPoints: ReportPoint[];
+  settings: RestaurantSettings;
 }
 
 type DbTable = {
@@ -308,6 +315,19 @@ type DbCustomerInteraction = {
   created_at: string;
 };
 
+type DbOperationalDocument = {
+  id: string;
+  document_type: string;
+  title: string | null;
+  order_id: string | null;
+  cash_register_id: string | null;
+  reservation_id: string | null;
+  payload: unknown;
+  printed_by: string | null;
+  printed_at: string;
+  created_at: string;
+};
+
 type DbAuditLog = {
   id: string;
   actor_id: string | null;
@@ -318,6 +338,12 @@ type DbAuditLog = {
   summary: string | null;
   metadata: unknown;
   created_at: string;
+};
+
+type DbSetting = {
+  key: string;
+  value: unknown;
+  updated_at: string | null;
 };
 
 export const demoSnapshot: RestaurantSnapshot = {
@@ -340,8 +366,10 @@ export const demoSnapshot: RestaurantSnapshot = {
   customers: demoCustomers,
   reservations: demoReservations,
   customerInteractions: demoCustomerInteractions,
+  operationalDocuments: demoOperationalDocuments,
   auditLogs: demoAuditLogs,
   reportPoints: demoReportPoints,
+  settings: demoRestaurantSettings,
 };
 
 export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
@@ -373,7 +401,9 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
       customersResult,
       reservationsResult,
       customerInteractionsResult,
+      operationalDocumentsResult,
       auditLogsResult,
+      settingsResult,
     ] = await Promise.all([
       supabase.from("tables").select("*").order("number"),
       supabase.from("employees").select("*").order("full_name"),
@@ -422,11 +452,23 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
         : Promise.resolve({ data: [], error: null }),
       shouldLoadAuthenticatedTables
         ? supabase
+            .from("operational_documents")
+            .select("*")
+            .order("printed_at", { ascending: false })
+            .limit(80)
+        : Promise.resolve({ data: [], error: null }),
+      shouldLoadAuthenticatedTables
+        ? supabase
             .from("audit_logs")
             .select("*")
             .order("created_at", { ascending: false })
             .limit(80)
         : Promise.resolve({ data: [], error: null }),
+      supabase
+        .from("settings")
+        .select("*")
+        .eq("key", "restaurant_profile")
+        .maybeSingle(),
     ]);
 
     const firstError = [
@@ -449,7 +491,9 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
       customersResult.error,
       reservationsResult.error,
       customerInteractionsResult.error,
+      operationalDocumentsResult.error,
       auditLogsResult.error,
+      settingsResult.error,
     ].find(Boolean);
 
     if (firstError) {
@@ -539,9 +583,19 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
       customerById,
       employeeById,
     );
+    const operationalDocuments = mapOperationalDocuments(
+      (operationalDocumentsResult.data ?? []) as DbOperationalDocument[],
+      orders,
+      cashRegisters,
+      reservations,
+      employeeById,
+    );
     const auditLogs = mapAuditLogs(
       (auditLogsResult.data ?? []) as DbAuditLog[],
       employeeById,
+    );
+    const settings = mapRestaurantSettings(
+      (settingsResult.data ?? null) as DbSetting | null,
     );
 
     return {
@@ -570,8 +624,12 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
       customerInteractions: customerInteractions.length
         ? customerInteractions
         : demoCustomerInteractions,
+      operationalDocuments: operationalDocuments.length
+        ? operationalDocuments
+        : demoOperationalDocuments,
       auditLogs: auditLogs.length ? auditLogs : demoAuditLogs,
       reportPoints: buildReportPoints(orders),
+      settings,
     };
   } catch (error) {
     return withFallbackError(error instanceof Error ? error.message : "Error desconocido");
@@ -1000,6 +1058,71 @@ function mapCustomerInteractions(
   });
 }
 
+function mapOperationalDocuments(
+  rows: DbOperationalDocument[],
+  orders: Order[],
+  cashRegisters: CashRegister[],
+  reservations: Reservation[],
+  employeeById: Map<string, Employee>,
+): OperationalDocument[] {
+  return rows.map((row) => {
+    const order = row.order_id
+      ? orders.find((item) => item.id === row.order_id)
+      : undefined;
+    const cashRegister = row.cash_register_id
+      ? cashRegisters.find((item) => item.id === row.cash_register_id)
+      : undefined;
+    const reservation = row.reservation_id
+      ? reservations.find((item) => item.id === row.reservation_id)
+      : undefined;
+    const employee = row.printed_by
+      ? employeeById.get(row.printed_by)
+      : undefined;
+
+    return {
+      id: row.id,
+      type: toOperationalDocumentType(row.document_type),
+      title: row.title?.trim() || "Documento operativo",
+      orderId: order?.id ?? row.order_id ?? undefined,
+      orderNumber: order?.number,
+      cashRegisterId: cashRegister?.id ?? row.cash_register_id ?? undefined,
+      reservationId: reservation?.id ?? row.reservation_id ?? undefined,
+      payload: isRecord(row.payload) ? row.payload : {},
+      printedBy: employee?.name ?? "Sistema",
+      printedAt: row.printed_at,
+      createdAt: row.created_at,
+    };
+  });
+}
+
+function mapRestaurantSettings(row: DbSetting | null): RestaurantSettings {
+  const value = isRecord(row?.value) ? row.value : {};
+
+  return {
+    ...demoRestaurantSettings,
+    restaurantName: toText(value.restaurantName, demoRestaurantSettings.restaurantName),
+    academyName: toText(value.academyName, demoRestaurantSettings.academyName),
+    legalName: toText(value.legalName, demoRestaurantSettings.legalName),
+    taxId: toText(value.taxId, demoRestaurantSettings.taxId),
+    address: toText(value.address, demoRestaurantSettings.address),
+    phone: toText(value.phone, demoRestaurantSettings.phone),
+    email: toText(value.email, demoRestaurantSettings.email),
+    currency: toText(value.currency, demoRestaurantSettings.currency),
+    locale: toText(value.locale, demoRestaurantSettings.locale),
+    logoUrl: toText(value.logoUrl, demoRestaurantSettings.logoUrl),
+    serviceChargePercent: toNumberOrFallback(
+      value.serviceChargePercent,
+      demoRestaurantSettings.serviceChargePercent,
+    ),
+    taxPercent: toNumberOrFallback(value.taxPercent, demoRestaurantSettings.taxPercent),
+    operatingHours: toOperatingHours(value.operatingHours),
+    documentSeries: toDocumentSeries(value.documentSeries),
+    printStations: toPrintStations(value.printStations),
+    tableZones: toTableZones(value.tableZones),
+    updatedAt: row?.updated_at ?? demoRestaurantSettings.updatedAt,
+  };
+}
+
 function mapAuditLogs(
   rows: DbAuditLog[],
   employeeById: Map<string, Employee>,
@@ -1065,6 +1188,98 @@ function toStringArray(value: unknown): string[] {
   }
 
   return [];
+}
+
+function toText(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function toNumberOrFallback(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function toOperatingHours(value: unknown): RestaurantSettings["operatingHours"] {
+  if (!Array.isArray(value)) {
+    return demoRestaurantSettings.operatingHours;
+  }
+
+  return value
+    .filter(isRecord)
+    .map((item, index) => ({
+      day: toText(item.day, demoRestaurantSettings.operatingHours[index]?.day ?? "Dia"),
+      open: toText(item.open, "09:00"),
+      close: toText(item.close, "18:00"),
+      enabled:
+        typeof item.enabled === "boolean"
+          ? item.enabled
+          : demoRestaurantSettings.operatingHours[index]?.enabled ?? true,
+    }));
+}
+
+function toDocumentSeries(value: unknown): RestaurantSettings["documentSeries"] {
+  if (!Array.isArray(value)) {
+    return demoRestaurantSettings.documentSeries;
+  }
+
+  const series = value
+    .filter(isRecord)
+    .map((item) => ({
+      type: toOperationalDocumentType(toText(item.type, "table_prebill")),
+      prefix: toText(item.prefix, "DOC"),
+      nextNumber: Math.max(1, Math.round(toNumberOrFallback(item.nextNumber, 1))),
+      enabled: typeof item.enabled === "boolean" ? item.enabled : true,
+    }));
+
+  return series.length ? series : demoRestaurantSettings.documentSeries;
+}
+
+function toPrintStations(value: unknown): RestaurantSettings["printStations"] {
+  if (!Array.isArray(value)) {
+    return demoRestaurantSettings.printStations;
+  }
+
+  const stations = value
+    .filter(isRecord)
+    .map((item, index) => ({
+      id: toText(item.id, `ps-${index + 1}`),
+      name: toText(item.name, "Estacion"),
+      area: toPrintStationArea(item.area),
+      printerName: toText(item.printerName, "Sin impresora"),
+      autoPrint: typeof item.autoPrint === "boolean" ? item.autoPrint : false,
+    }));
+
+  return stations.length ? stations : demoRestaurantSettings.printStations;
+}
+
+function toTableZones(value: unknown): RestaurantSettings["tableZones"] {
+  if (!Array.isArray(value)) {
+    return demoRestaurantSettings.tableZones;
+  }
+
+  const zones = value
+    .filter(isRecord)
+    .map((item) => ({
+      name: toText(item.name, "Zona"),
+      capacity: Math.max(0, Math.round(toNumberOrFallback(item.capacity, 0))),
+      color: toText(item.color, "bg-zinc-500"),
+      active: typeof item.active === "boolean" ? item.active : true,
+    }));
+
+  return zones.length ? zones : demoRestaurantSettings.tableZones;
+}
+
+function toPrintStationArea(
+  value: unknown,
+): RestaurantSettings["printStations"][number]["area"] {
+  return value === "hot" ||
+    value === "cold" ||
+    value === "bar" ||
+    value === "pastry" ||
+    value === "cash" ||
+    value === "salon"
+    ? value
+    : "salon";
 }
 
 function toTableStatus(value: string): TableStatus {
@@ -1158,6 +1373,20 @@ function toCustomerInteractionType(
   }
 
   return "note";
+}
+
+function toOperationalDocumentType(value: string): OperationalDocumentType {
+  if (
+    value === "kitchen_ticket" ||
+    value === "table_prebill" ||
+    value === "payment_receipt" ||
+    value === "cash_close" ||
+    value === "reservation_sheet"
+  ) {
+    return value;
+  }
+
+  return "table_prebill";
 }
 
 function isInventoryCategory(value: string): value is RawMaterial["category"] {

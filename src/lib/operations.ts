@@ -7,11 +7,13 @@ import type {
   InventoryMovement,
   Order,
   OrderStatus,
+  OperationalDocument,
   PaymentMethod,
   Product,
   Purchase,
   RecipeIngredient,
   Reservation,
+  RestaurantSettings,
   RoleId,
   TableStatus,
 } from "@/lib/types";
@@ -103,6 +105,17 @@ export interface CustomerInteractionDraft {
   dueAt: string;
   completed: boolean;
 }
+
+export interface OperationalDocumentDraft {
+  type: OperationalDocument["type"];
+  title: string;
+  orderId?: string;
+  cashRegisterId?: string;
+  reservationId?: string;
+  payload: Record<string, unknown>;
+}
+
+export type RestaurantSettingsDraft = RestaurantSettings;
 
 export interface PurchaseReceptionDraft {
   supplierId: string;
@@ -934,6 +947,88 @@ export async function persistCustomerInteraction(
   );
 
   return { ok: true, message: "Interaccion CRM registrada en Supabase." };
+}
+
+export async function persistOperationalDocument(
+  document: OperationalDocumentDraft,
+): Promise<OperationResult> {
+  if (!isSupabaseConfigured()) {
+    return demoOnlyResult();
+  }
+
+  const responsibleId = await getCurrentEmployeeId();
+  const { data, error } = await getSupabaseBrowserClient()
+    .from("operational_documents")
+    .insert({
+      document_type: document.type,
+      title: document.title.trim() || "Documento operativo",
+      order_id: document.orderId ?? null,
+      cash_register_id: document.cashRegisterId ?? null,
+      reservation_id: document.reservationId ?? null,
+      payload: document.payload,
+      printed_by: responsibleId,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    return writeError(error.message);
+  }
+
+  await recordAuditLog(
+    {
+      action: "document.print",
+      entityType: "operational_document",
+      entityId: typeof data?.id === "string" ? data.id : undefined,
+      summary: `Documento ${document.title} registrado para impresion.`,
+      metadata: {
+        type: document.type,
+        orderId: document.orderId ?? null,
+        cashRegisterId: document.cashRegisterId ?? null,
+        reservationId: document.reservationId ?? null,
+      },
+    },
+    responsibleId,
+  );
+
+  return { ok: true, message: "Documento operativo registrado en Supabase." };
+}
+
+export async function persistRestaurantSettings(
+  settings: RestaurantSettingsDraft,
+): Promise<OperationResult> {
+  if (!isSupabaseConfigured()) {
+    return demoOnlyResult();
+  }
+
+  const responsibleId = await getCurrentEmployeeId();
+  const { error } = await getSupabaseBrowserClient().from("settings").upsert({
+    key: "restaurant_profile",
+    value: settings,
+    updated_by: responsibleId,
+  });
+
+  if (error) {
+    return writeError(error.message);
+  }
+
+  await recordAuditLog(
+    {
+      action: "settings.upsert",
+      entityType: "settings",
+      entityId: "restaurant_profile",
+      summary: `Configuracion de ${settings.restaurantName} actualizada.`,
+      metadata: {
+        logoUrl: settings.logoUrl,
+        serviceChargePercent: settings.serviceChargePercent,
+        taxPercent: settings.taxPercent,
+        printStations: settings.printStations.length,
+      },
+    },
+    responsibleId,
+  );
+
+  return { ok: true, message: "Configuracion guardada en Supabase." };
 }
 
 export async function persistPurchaseReception(

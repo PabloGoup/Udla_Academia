@@ -4,7 +4,13 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #171a21;
+  --udla-orange: #e94b00;
+  --udla-orange-dark: #c83f00;
+  --udla-orange-soft: #fff2eb;
+  --udla-charcoal: #171a21;
+  --udla-graphite: #2a3038;
+  --udla-soft: #f3f4f7;
 }
 
 @theme inline {
@@ -16,8 +22,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #101112;
+    --foreground: #f4f5f8;
   }
 }
 
@@ -41,4 +47,24 @@ textarea {
 
 img {
   max-width: 100%;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  [data-print-document="true"],
+  [data-print-document="true"] * {
+    visibility: visible;
+  }
+
+  [data-print-document="true"] {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: none;
+    border: 0;
+    box-shadow: none;
+  }
 }

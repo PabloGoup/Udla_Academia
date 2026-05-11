@@ -717,9 +717,159 @@ on conflict (id) do update set
   responsible_id = excluded.responsible_id,
   created_at = excluded.created_at;
 
+insert into public.operational_documents (
+  id, document_type, title, order_id, cash_register_id, reservation_id,
+  payload, printed_by, printed_at, created_at
+) values
+  (
+    '00000000-0000-5400-8000-000000000001',
+    'kitchen_ticket',
+    'Comanda cocina A-1048',
+    '00000000-0000-4800-8000-000000000001',
+    null,
+    null,
+    '{"station":"hot","table":2,"items":["2x Lomo salteado","2x Jugo natural"],"notes":"Mesa apurada, enviar fondos juntos."}'::jsonb,
+    '00000000-0000-4100-8000-000000000003',
+    now() - interval '31 minutes',
+    now() - interval '31 minutes'
+  ),
+  (
+    '00000000-0000-5400-8000-000000000002',
+    'table_prebill',
+    'Pre-cuenta mesa 7',
+    '00000000-0000-4800-8000-000000000003',
+    null,
+    null,
+    '{"table":7,"subtotal":57200,"tip":5720,"total":57200,"items":["4x Causa camaron palta","4x Jugo natural"]}'::jsonb,
+    '00000000-0000-4100-8000-000000000005',
+    now() - interval '29 minutes',
+    now() - interval '29 minutes'
+  ),
+  (
+    '00000000-0000-5400-8000-000000000003',
+    'payment_receipt',
+    'Comprobante pago A-1050',
+    '00000000-0000-4800-8000-000000000003',
+    '00000000-0000-4b00-8000-000000000001',
+    null,
+    '{"paymentMethod":"debit","amount":57200,"tip":5720,"cashier":"Felipe Araya"}'::jsonb,
+    '00000000-0000-4100-8000-000000000005',
+    now() - interval '25 minutes',
+    now() - interval '25 minutes'
+  ),
+  (
+    '00000000-0000-5400-8000-000000000004',
+    'reservation_sheet',
+    'Ficha reserva Carolina Munoz',
+    null,
+    null,
+    '00000000-0000-5200-8000-000000000001',
+    '{"customer":"Carolina Munoz","table":3,"time":"20:30","partySize":6,"allergies":["Lacteos"]}'::jsonb,
+    '00000000-0000-4100-8000-000000000003',
+    now() - interval '20 minutes',
+    now() - interval '20 minutes'
+  )
+on conflict (id) do update set
+  document_type = excluded.document_type,
+  title = excluded.title,
+  order_id = excluded.order_id,
+  cash_register_id = excluded.cash_register_id,
+  reservation_id = excluded.reservation_id,
+  payload = excluded.payload,
+  printed_by = excluded.printed_by,
+  printed_at = excluded.printed_at,
+  created_at = excluded.created_at;
+
+insert into public.settings (
+  key, value, updated_by, updated_at
+) values (
+  'restaurant_profile',
+  '{
+    "restaurantName": "UDLA Academia Gastronomica",
+    "academyName": "Universidad de Las Americas",
+    "legalName": "Academia Gastronomica UDLA",
+    "taxId": "76.000.000-0",
+    "address": "Campus Gastronomico UDLA, Santiago",
+    "phone": "+56 2 2440 0000",
+    "email": "academia.gastronomica@udla.cl",
+    "currency": "CLP",
+    "locale": "es-CL",
+    "logoUrl": "/logo-original-udla.png",
+    "serviceChargePercent": 10,
+    "taxPercent": 19,
+    "operatingHours": [
+      {"day":"Lunes","open":"09:00","close":"18:00","enabled":true},
+      {"day":"Martes","open":"09:00","close":"18:00","enabled":true},
+      {"day":"Miercoles","open":"09:00","close":"18:00","enabled":true},
+      {"day":"Jueves","open":"09:00","close":"18:00","enabled":true},
+      {"day":"Viernes","open":"09:00","close":"20:00","enabled":true},
+      {"day":"Sabado","open":"10:00","close":"16:00","enabled":true},
+      {"day":"Domingo","open":"10:00","close":"16:00","enabled":false}
+    ],
+    "documentSeries": [
+      {"type":"kitchen_ticket","prefix":"COC","nextNumber":1052,"enabled":true},
+      {"type":"table_prebill","prefix":"PRE","nextNumber":318,"enabled":true},
+      {"type":"payment_receipt","prefix":"REC","nextNumber":872,"enabled":true},
+      {"type":"cash_close","prefix":"CJA","nextNumber":44,"enabled":true},
+      {"type":"reservation_sheet","prefix":"RES","nextNumber":126,"enabled":true}
+    ],
+    "printStations": [
+      {"id":"ps-hot","name":"Cocina caliente","area":"hot","printerName":"EPSON-Cocina-01","autoPrint":true},
+      {"id":"ps-cold","name":"Cuarto frio","area":"cold","printerName":"EPSON-Frio-01","autoPrint":true},
+      {"id":"ps-bar","name":"Barra","area":"bar","printerName":"EPSON-Barra-01","autoPrint":true},
+      {"id":"ps-cash","name":"Caja","area":"cash","printerName":"EPSON-Caja-01","autoPrint":false}
+    ],
+    "tableZones": [
+      {"name":"Terraza","capacity":12,"color":"bg-emerald-500","active":true},
+      {"name":"Salon","capacity":24,"color":"bg-amber-500","active":true},
+      {"name":"Comedor","capacity":20,"color":"bg-cyan-500","active":true},
+      {"name":"Barra","capacity":8,"color":"bg-fuchsia-500","active":true}
+    ]
+  }'::jsonb,
+  '00000000-0000-4100-8000-000000000001',
+  now() - interval '15 minutes'
+)
+on conflict (key) do update set
+  value = excluded.value,
+  updated_by = excluded.updated_by,
+  updated_at = excluded.updated_at;
+
 insert into public.audit_logs (
   id, actor_id, actor_role, action, entity_type, entity_id, summary, metadata, created_at
 ) values
+  (
+    '00000000-0000-5000-8000-000000000009',
+    '00000000-0000-4100-8000-000000000001',
+    'administrator',
+    'settings.upsert',
+    'settings',
+    'restaurant_profile',
+    'Configuracion institucional y logo de academia actualizados.',
+    '{"logoUrl":"/logo-original-udla.png","serviceChargePercent":10,"taxPercent":19}'::jsonb,
+    now() - interval '15 minutes'
+  ),
+  (
+    '00000000-0000-5000-8000-000000000007',
+    '00000000-0000-4100-8000-000000000005',
+    'cashier',
+    'document.print',
+    'operational_document',
+    '00000000-0000-5400-8000-000000000002',
+    'Pre-cuenta de mesa 7 registrada para impresion.',
+    '{"type":"table_prebill","orderNumber":"A-1050"}'::jsonb,
+    now() - interval '29 minutes'
+  ),
+  (
+    '00000000-0000-5000-8000-000000000008',
+    '00000000-0000-4100-8000-000000000003',
+    'waiter',
+    'document.print',
+    'operational_document',
+    '00000000-0000-5400-8000-000000000004',
+    'Ficha de reserva de Carolina Munoz preparada para salon.',
+    '{"type":"reservation_sheet","reservationId":"00000000-0000-5200-8000-000000000001"}'::jsonb,
+    now() - interval '20 minutes'
+  ),
   (
     '00000000-0000-5000-8000-000000000005',
     '00000000-0000-4100-8000-000000000003',

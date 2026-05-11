@@ -18,12 +18,13 @@ export type Permission =
   | "inventory:manage"
   | "purchases:manage"
   | "crm:manage"
+  | "documents:manage"
   | "reports:read"
   | "food-safety:manage"
   | "employees:manage"
   | "audit:read"
-  | "education:read"
-  | "architecture:read";
+  | "settings:manage"
+  | "education:read";
 
 export type ModuleId =
   | "dashboard"
@@ -36,12 +37,13 @@ export type ModuleId =
   | "inventory"
   | "purchases"
   | "crm"
+  | "documents"
   | "reports"
   | "foodSafety"
   | "employees"
   | "audit"
-  | "education"
-  | "architecture";
+  | "settings"
+  | "education";
 
 export type TableStatus = "free" | "occupied" | "reserved" | "cleaning";
 
@@ -339,6 +341,76 @@ export interface CustomerInteraction {
   completedAt?: string;
   responsible: string;
   createdAt: string;
+}
+
+export type OperationalDocumentType =
+  | "kitchen_ticket"
+  | "table_prebill"
+  | "payment_receipt"
+  | "cash_close"
+  | "reservation_sheet";
+
+export interface OperationalDocument {
+  id: string;
+  type: OperationalDocumentType;
+  title: string;
+  orderId?: string;
+  orderNumber?: string;
+  cashRegisterId?: string;
+  reservationId?: string;
+  payload: Record<string, unknown>;
+  printedBy: string;
+  printedAt: string;
+  createdAt: string;
+}
+
+export interface DocumentSeriesSetting {
+  type: OperationalDocumentType;
+  prefix: string;
+  nextNumber: number;
+  enabled: boolean;
+}
+
+export interface PrintStationSetting {
+  id: string;
+  name: string;
+  area: "hot" | "cold" | "bar" | "pastry" | "cash" | "salon";
+  printerName: string;
+  autoPrint: boolean;
+}
+
+export interface OperatingHourSetting {
+  day: string;
+  open: string;
+  close: string;
+  enabled: boolean;
+}
+
+export interface TableZoneSetting {
+  name: string;
+  capacity: number;
+  color: string;
+  active: boolean;
+}
+
+export interface RestaurantSettings {
+  restaurantName: string;
+  academyName: string;
+  legalName: string;
+  taxId: string;
+  address: string;
+  phone: string;
+  email: string;
+  currency: string;
+  locale: string;
+  logoUrl: string;
+  serviceChargePercent: number;
+  taxPercent: number;
+  operatingHours: OperatingHourSetting[];
+  documentSeries: DocumentSeriesSetting[];
+  printStations: PrintStationSetting[];
+  tableZones: TableZoneSetting[];
+  updatedAt?: string;
 }
 
 export interface AuditLog {

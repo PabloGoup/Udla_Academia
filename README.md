@@ -1,6 +1,6 @@
 # UDLA Academia Gastronomica
 
-Web app profesional para administrar y simular la operacion completa de un restaurante presencial: salon, mesas, pedidos, cocina, caja, inventario, compras, proveedores, recetas tecnicas, costeo real, reportes, trabajadores, seguridad alimentaria, auditoria operativa, clientes y reservas.
+Web app profesional para administrar y simular la operacion completa de un restaurante presencial: salon, mesas, pedidos, cocina, caja, inventario, compras, proveedores, recetas tecnicas, costeo real, reportes, trabajadores, seguridad alimentaria, auditoria operativa, clientes, reservas, impresion operativa y configuracion institucional.
 
 ## Estado actual
 
@@ -23,6 +23,8 @@ Esta etapa entrega una base funcional en modo demo local y preparada para Supaba
 - Gestion avanzada de trabajadores con alta/edicion, roles, contacto, turnos, estado operativo, costo horario, productividad y costo laboral proyectado.
 - Auditoria transversal de acciones criticas con actor, rol, entidad, metadata, vista historica y persistencia en `audit_logs`.
 - Clientes, reservas y CRM operativo con fichas, preferencias, alergias, tags, agenda por mesa, no-shows y seguimientos.
+- Documentos operativos imprimibles para comandas, pre-cuentas, comprobantes, cierres de caja y fichas de reserva con persistencia en `operational_documents`.
+- Configuracion institucional con logo de academia, datos tributarios, reglas comerciales, horarios, series documentales, impresoras por estacion y zonas de salon en `settings`.
 - Calculo de rendimiento, cantidad neta, costo real neto, costo por porcion, food cost y rentabilidad.
 - Esquema SQL inicial en `supabase/schema.sql`.
 - Datos semilla academicos en `supabase/seed.sql`.
@@ -41,7 +43,7 @@ Abrir `http://localhost:3000`.
 
 1. Crear un proyecto en Supabase.
 2. Ejecutar `supabase/schema.sql` en el SQL editor.
-3. Ejecutar `supabase/seed.sql` para cargar datos iniciales de salon, cocina, caja, inventario, recetas, seguridad alimentaria, auditoria, clientes y reservas.
+3. Ejecutar `supabase/seed.sql` para cargar datos iniciales de salon, cocina, caja, inventario, recetas, seguridad alimentaria, auditoria, clientes, reservas, documentos operativos y configuracion.
 4. Copiar `.env.example` a `.env.local` o usar `.env`.
 5. Completar:
 
@@ -56,7 +58,7 @@ Tambien se admite `NEXT_PUBLIC_SUPABASE_ANON_KEY` para proyectos que aun usan es
 
 Con variables configuradas, la app intenta leer Supabase. Si faltan tablas, permisos o datos criticos, muestra fallback demo para no bloquear el modulo educativo.
 
-El SQL tambien agrega tablas operativas a `supabase_realtime` para que cambios en mesas, trabajadores, pedidos, comandas, caja, compras, inventario, productos, recetario, seguridad alimentaria, auditoria, clientes y reservas refresquen la interfaz automaticamente.
+El SQL tambien agrega tablas operativas a `supabase_realtime` para que cambios en mesas, trabajadores, pedidos, comandas, caja, compras, inventario, productos, recetario, seguridad alimentaria, auditoria, clientes, reservas, documentos y configuracion refresquen la interfaz automaticamente.
 
 ## Autenticacion y roles
 
@@ -68,7 +70,7 @@ Para asignar roles comerciales, define `app_metadata.role` en el usuario de Supa
 administrator, supervisor, cashier, waiter, cook, chef, warehouse
 ```
 
-Si no hay rol configurado, el perfil se crea como `waiter`. Las politicas RLS del prototipo permiten escritura por grupos funcionales: salon, pedidos, cocina, caja, inventario, recetas, clientes, reservas y administracion.
+Si no hay rol configurado, el perfil se crea como `waiter`. Las politicas RLS del prototipo permiten escritura por grupos funcionales: salon, pedidos, cocina, caja, inventario, recetas, clientes, reservas, documentos, configuracion y administracion.
 
 ## Validacion
 

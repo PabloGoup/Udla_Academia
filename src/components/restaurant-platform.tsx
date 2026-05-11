@@ -38,6 +38,7 @@ import {
   RefreshCw,
   ReceiptText,
   Salad,
+  Settings,
   ShieldCheck,
   ShoppingCart,
   SplitSquareHorizontal,
@@ -51,10 +52,7 @@ import {
   WifiOff,
   type LucideIcon,
 } from "lucide-react";
-import {
-  educationSteps,
-  visualPanels,
-} from "@/lib/demo-data";
+import { visualPanels } from "@/lib/demo-data";
 import {
   demoSnapshot,
   loadRestaurantSnapshot,
@@ -72,11 +70,13 @@ import {
   persistFoodSafetyCheck,
   persistInventoryMovement,
   persistKitchenTicket,
+  persistOperationalDocument,
   persistOrderItem,
   persistOrderStatus,
   persistProductCatalogItem,
   persistPurchaseReception,
   persistReservation,
+  persistRestaurantSettings,
   persistTableStatus,
   persistTechnicalRecipe,
   signInOperator,
@@ -89,9 +89,11 @@ import {
   type FoodSafetyCheckDraft,
   type InventoryMovementDraft,
   type OperationResult,
+  type OperationalDocumentDraft,
   type ProductCatalogDraft,
   type PurchaseReceptionDraft,
   type ReservationDraft,
+  type RestaurantSettingsDraft,
   type TechnicalRecipeDraft,
 } from "@/lib/operations";
 import { subscribeToRestaurantRealtime } from "@/lib/realtime";
@@ -118,6 +120,8 @@ import type {
   ModuleId,
   Order,
   OrderStatus,
+  OperationalDocument,
+  OperationalDocumentType,
   PaymentMethod,
   Product,
   ProductCategory,
@@ -127,6 +131,7 @@ import type {
   Recipe,
   ReportPoint,
   RestaurantTable,
+  RestaurantSettings,
   Reservation,
   ReservationStatus,
   RoleId,
@@ -160,112 +165,119 @@ const modules: Array<{
     label: "Panel operativo",
     shortLabel: "Panel",
     icon: LayoutDashboard,
-    accent: "bg-zinc-900 text-white",
+    accent: "bg-[var(--udla-charcoal)] text-white",
   },
   {
     id: "tables",
     label: "Mesas y salon",
     shortLabel: "Mesas",
     icon: Table2,
-    accent: "bg-emerald-600 text-white",
+    accent: "bg-[var(--udla-orange)] text-white",
   },
   {
     id: "orders",
     label: "Pedidos presenciales",
     shortLabel: "Pedidos",
     icon: Utensils,
-    accent: "bg-amber-500 text-zinc-950",
+    accent: "bg-[var(--udla-charcoal)] text-white",
   },
   {
     id: "kitchen",
     label: "Cocina en tiempo real",
     shortLabel: "Cocina",
     icon: ChefHat,
-    accent: "bg-red-600 text-white",
+    accent: "bg-[var(--udla-orange-dark)] text-white",
   },
   {
     id: "cash",
     label: "Caja",
     shortLabel: "Caja",
     icon: CreditCard,
-    accent: "bg-cyan-600 text-white",
+    accent: "bg-[var(--udla-charcoal)] text-white",
   },
   {
     id: "products",
     label: "Productos",
     shortLabel: "Productos",
     icon: Salad,
-    accent: "bg-lime-600 text-white",
+    accent: "bg-[var(--udla-orange)] text-white",
   },
   {
     id: "recipes",
     label: "Recetario tecnico",
     shortLabel: "Recetas",
     icon: BookOpen,
-    accent: "bg-violet-600 text-white",
+    accent: "bg-[var(--udla-charcoal)] text-white",
   },
   {
     id: "inventory",
     label: "Inventario y bodega",
     shortLabel: "Bodega",
     icon: Boxes,
-    accent: "bg-orange-600 text-white",
+    accent: "bg-[var(--udla-orange)] text-white",
   },
   {
     id: "purchases",
     label: "Compras y proveedores",
     shortLabel: "Compras",
     icon: ShoppingCart,
-    accent: "bg-sky-600 text-white",
+    accent: "bg-[var(--udla-charcoal)] text-white",
   },
   {
     id: "crm",
     label: "Clientes y reservas",
     shortLabel: "Clientes",
     icon: CalendarCheck,
-    accent: "bg-amber-600 text-white",
+    accent: "bg-[var(--udla-orange)] text-white",
+  },
+  {
+    id: "documents",
+    label: "Impresion y documentos",
+    shortLabel: "Documentos",
+    icon: Printer,
+    accent: "bg-[var(--udla-charcoal)] text-white",
   },
   {
     id: "reports",
     label: "Reportes",
     shortLabel: "Reportes",
     icon: BarChart3,
-    accent: "bg-fuchsia-600 text-white",
+    accent: "bg-[var(--udla-orange)] text-white",
   },
   {
     id: "foodSafety",
     label: "Seguridad alimentaria",
     shortLabel: "Seguridad",
     icon: ShieldCheck,
-    accent: "bg-rose-600 text-white",
+    accent: "bg-[#b73200] text-white",
   },
   {
     id: "employees",
     label: "Trabajadores",
     shortLabel: "Equipo",
     icon: Users,
-    accent: "bg-teal-600 text-white",
+    accent: "bg-[var(--udla-charcoal)] text-white",
   },
   {
     id: "audit",
     label: "Auditoria",
     shortLabel: "Auditoria",
     icon: ListChecks,
-    accent: "bg-stone-700 text-white",
+    accent: "bg-[var(--udla-graphite)] text-white",
+  },
+  {
+    id: "settings",
+    label: "Configuracion",
+    shortLabel: "Config",
+    icon: Settings,
+    accent: "bg-[var(--udla-charcoal)] text-white",
   },
   {
     id: "education",
     label: "Modulo educativo",
     shortLabel: "Educacion",
     icon: GraduationCap,
-    accent: "bg-indigo-600 text-white",
-  },
-  {
-    id: "architecture",
-    label: "Arquitectura",
-    shortLabel: "Arquitectura",
-    icon: Database,
-    accent: "bg-stone-700 text-white",
+    accent: "bg-[var(--udla-orange)] text-white",
   },
 ];
 
@@ -339,8 +351,8 @@ const categoryMeta: Record<
   },
   seafood: {
     label: "Pescados y mariscos",
-    className: "bg-blue-100 text-blue-900 border-blue-200",
-    bar: "bg-blue-500",
+    className: "bg-slate-100 text-slate-900 border-slate-200",
+    bar: "bg-[var(--udla-graphite)]",
   },
   produce: {
     label: "Verduras y frutas",
@@ -359,8 +371,8 @@ const categoryMeta: Record<
   },
   frozen: {
     label: "Congelados",
-    className: "bg-purple-100 text-purple-900 border-purple-200",
-    bar: "bg-purple-500",
+    className: "bg-zinc-100 text-zinc-900 border-zinc-200",
+    bar: "bg-[var(--udla-charcoal)]",
   },
   ready: {
     label: "Listos para consumo",
@@ -1654,6 +1666,90 @@ export function RestaurantPlatform() {
     });
   }
 
+  function generateOperationalDocument(draft: OperationalDocumentDraft) {
+    if (!draft.title.trim()) {
+      showOperationResult({
+        ok: false,
+        message: "El documento debe tener un titulo valido.",
+      });
+      return "";
+    }
+
+    const now = new Date().toISOString();
+    const order = draft.orderId
+      ? orderState.find((item) => item.id === draft.orderId)
+      : undefined;
+    const document: OperationalDocument = {
+      id: createClientId("doc", snapshot.source),
+      type: draft.type,
+      title: draft.title.trim(),
+      orderId: draft.orderId,
+      orderNumber: order?.number,
+      cashRegisterId: draft.cashRegisterId,
+      reservationId: draft.reservationId,
+      payload: draft.payload,
+      printedBy: authProfile?.name ?? role.label,
+      printedAt: now,
+      createdAt: now,
+    };
+
+    setSnapshot((current) => ({
+      ...current,
+      operationalDocuments: [document, ...current.operationalDocuments],
+    }));
+
+    if (snapshot.source === "supabase") {
+      void persistOperationalDocument(draft).then(showOperationResult);
+      return document.id;
+    }
+
+    showOperationResult({
+      ok: true,
+      message: "Documento operativo generado en demo local.",
+    });
+    return document.id;
+  }
+
+  function saveRestaurantSettings(draft: RestaurantSettingsDraft) {
+    if (!draft.restaurantName.trim() || !draft.legalName.trim()) {
+      showOperationResult({
+        ok: false,
+        message: "Nombre comercial y razon social son obligatorios.",
+      });
+      return;
+    }
+
+    const settings: RestaurantSettings = {
+      ...draft,
+      restaurantName: draft.restaurantName.trim(),
+      academyName: draft.academyName.trim(),
+      legalName: draft.legalName.trim(),
+      taxId: draft.taxId.trim(),
+      address: draft.address.trim(),
+      phone: draft.phone.trim(),
+      email: draft.email.trim(),
+      logoUrl: getSafeLogoUrl(draft.logoUrl),
+      serviceChargePercent: Math.max(0, draft.serviceChargePercent),
+      taxPercent: Math.max(0, draft.taxPercent),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setSnapshot((current) => ({
+      ...current,
+      settings,
+    }));
+
+    if (snapshot.source === "supabase") {
+      void persistRestaurantSettings(settings).then(showOperationResult);
+      return;
+    }
+
+    showOperationResult({
+      ok: true,
+      message: "Configuracion actualizada en demo local.",
+    });
+  }
+
   const content = activeAccess ? (
     renderModule()
   ) : (
@@ -1745,6 +1841,8 @@ export function RestaurantPlatform() {
             onRegisterInteraction={registerCustomerInteraction}
           />
         );
+      case "documents":
+        return <DocumentsModule onGenerateDocument={generateOperationalDocument} />;
       case "reports":
         return <ReportsModule />;
       case "foodSafety":
@@ -1753,30 +1851,37 @@ export function RestaurantPlatform() {
         return <EmployeesModule onSaveEmployee={saveEmployeeProfile} />;
       case "audit":
         return <AuditModule />;
+      case "settings":
+        return <SettingsModule onSaveSettings={saveRestaurantSettings} />;
       case "education":
         return <EducationModule />;
-      case "architecture":
-        return <ArchitectureModule />;
     }
   }
 
   return (
     <RestaurantDataContext.Provider value={snapshot}>
       <div className={darkMode ? "dark" : ""}>
-      <div className="min-h-screen overflow-x-hidden bg-[#f5f7f8] text-zinc-950 transition-colors dark:bg-[#101112] dark:text-zinc-100">
-        <header className="sticky top-0 z-30 border-b border-black/10 bg-white/90 backdrop-blur dark:border-white/10 dark:bg-[#101112]/90">
+      <div className="min-h-screen overflow-x-hidden bg-[var(--udla-soft)] text-[var(--udla-charcoal)] transition-colors dark:bg-[#101112] dark:text-zinc-100">
+        <header className="sticky top-0 z-30 border-b-4 border-[var(--udla-orange)] bg-white/95 shadow-sm backdrop-blur dark:bg-[#171a21]/95">
           <div className="flex min-w-0 flex-col gap-4 px-4 py-4 lg:px-6">
             <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-zinc-950 text-white dark:bg-white dark:text-zinc-950">
-                  <Store className="h-6 w-6" />
+                <div className="relative flex h-14 w-44 shrink-0 items-center justify-center rounded-lg bg-white px-3 py-2 shadow-sm ring-1 ring-black/10 dark:ring-[var(--udla-orange)]/50">
+                  <Image
+                    src={getSafeLogoUrl(snapshot.settings.logoUrl)}
+                    alt={`Logo ${snapshot.settings.academyName}`}
+                    width={160}
+                    height={45}
+                    className="h-auto max-h-10 w-auto object-contain"
+                    priority
+                  />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
-                    UDLA Academia Gastronomica
+                  <p className="text-sm font-medium text-zinc-500 dark:text-zinc-300">
+                    {snapshot.settings.academyName}
                   </p>
                   <h1 className="text-xl font-semibold md:text-2xl">
-                    Sistema integral de restaurante presencial
+                    {snapshot.settings.restaurantName}
                   </h1>
                 </div>
               </div>
@@ -1821,8 +1926,8 @@ export function RestaurantPlatform() {
                   onClick={() => setSelectedRole(item.id)}
                   className={`h-11 shrink-0 rounded-lg border px-4 text-sm font-semibold transition ${
                     selectedRole === item.id
-                      ? "border-zinc-950 bg-zinc-950 text-white dark:border-white dark:bg-white dark:text-zinc-950"
-                      : "border-black/10 bg-white text-zinc-700 hover:border-zinc-400 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-200"
+                      ? "border-[var(--udla-orange)] bg-[var(--udla-orange)] text-white shadow-sm"
+                      : "border-black/10 bg-white text-zinc-700 hover:border-[var(--udla-orange)] hover:text-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-200"
                   }`}
                 >
                   {item.label}
@@ -1863,13 +1968,15 @@ export function RestaurantPlatform() {
                     onClick={() => setActiveModule(module.id)}
                     className={`flex h-12 shrink-0 items-center gap-3 rounded-lg px-3 text-left text-sm font-semibold transition lg:w-full ${
                       active
-                        ? "bg-zinc-950 text-white shadow-sm dark:bg-white dark:text-zinc-950"
-                        : "bg-transparent text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                        ? "bg-[var(--udla-orange)] text-white shadow-sm"
+                        : "bg-transparent text-zinc-700 hover:bg-[var(--udla-orange-soft)] hover:text-[var(--udla-orange)] dark:text-zinc-200 dark:hover:bg-[#241a16]"
                     } ${allowed ? "" : "opacity-50"}`}
                   >
                     <span
                       className={`flex h-8 w-8 items-center justify-center rounded-md ${
-                        active ? module.accent : "bg-zinc-100 dark:bg-zinc-800"
+                        active
+                          ? "bg-white/20 text-white"
+                          : "bg-[var(--udla-orange-soft)] text-[var(--udla-orange)] dark:bg-[#2a1d18]"
                       }`}
                     >
                       {allowed ? <Icon className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
@@ -2092,13 +2199,13 @@ function DashboardModule({
           label="Food cost"
           value={formatPercent(stats.foodCost)}
           icon={Calculator}
-          tone="bg-violet-600"
+          tone="bg-[var(--udla-charcoal)]"
         />
         <MetricCard
           label="Promedio cocina"
           value={`${stats.kitchenAverage} min`}
           icon={Clock}
-          tone="bg-cyan-600"
+          tone="bg-[var(--udla-orange)]"
         />
         <MetricCard
           label="Alertas stock"
@@ -2148,7 +2255,7 @@ function TablesModule({
 
       <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
         <Panel title="Mapa del salon" icon={Table2}>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+          <div className="grid grid-cols-4 gap-2 md:grid-cols-2 md:gap-3 lg:grid-cols-3 2xl:grid-cols-4">
             {tables.map((table) => {
               const meta = tableStatusMeta[table.status];
               const selected = selectedTable.id === table.id;
@@ -2158,27 +2265,38 @@ function TablesModule({
                   key={table.id}
                   type="button"
                   onClick={() => onSelect(table.id)}
-                  className={`min-h-[154px] rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md ${meta.className} ${
+                  className={`min-h-[94px] rounded-lg border p-2 text-left transition hover:-translate-y-0.5 hover:shadow-md md:min-h-[154px] md:p-4 ${meta.className} ${
                     selected ? "ring-2 ring-zinc-950 dark:ring-white" : ""
                   }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-medium opacity-80">{table.zone}</p>
-                      <p className="text-3xl font-semibold">Mesa {table.number}</p>
+                  <div className="flex h-full min-h-[78px] flex-col justify-between md:min-h-[122px]">
+                    <div className="flex items-start justify-between gap-1">
+                      <div className="min-w-0">
+                        <p className="truncate text-[10px] font-medium uppercase leading-none opacity-80 md:text-sm md:normal-case md:leading-normal">
+                          {table.zone}
+                        </p>
+                        <p className="mt-1 text-base font-semibold leading-tight md:text-3xl">
+                          Mesa {table.number}
+                        </p>
+                      </div>
+                      <span className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full md:h-3 md:w-3 ${meta.dot}`} />
                     </div>
-                    <span className={`h-3 w-3 rounded-full ${meta.dot}`} />
+
+                    <div className="mt-2 flex items-end justify-between gap-1 text-[11px] font-semibold leading-tight md:mt-6 md:text-sm">
+                      <span className="md:hidden">{table.seats}p</span>
+                      <span className="hidden md:inline">{table.seats} puestos</span>
+                      <span className="truncate text-right">{meta.label}</span>
+                    </div>
+
+                    <div className="hidden md:block">
+                      <p className="mt-2 text-sm opacity-80">Mesero: {table.server}</p>
+                      {table.total ? (
+                        <p className="mt-1 text-sm font-semibold">
+                          Cuenta: {formatCurrency(table.total)}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
-                  <div className="mt-6 flex items-center justify-between text-sm font-medium">
-                    <span>{table.seats} puestos</span>
-                    <span>{meta.label}</span>
-                  </div>
-                  <p className="mt-2 text-sm opacity-80">Mesero: {table.server}</p>
-                  {table.total ? (
-                    <p className="mt-1 text-sm font-semibold">
-                      Cuenta: {formatCurrency(table.total)}
-                    </p>
-                  ) : null}
                 </button>
               );
             })}
@@ -2430,7 +2548,7 @@ function KitchenModule({
                 <button
                   type="button"
                   onClick={() => onUpdateStatus(order.id, "delivered")}
-                  className="h-11 rounded-lg bg-sky-600 text-sm font-semibold text-white hover:bg-sky-700"
+                  className="h-11 rounded-lg bg-[var(--udla-charcoal)] text-sm font-semibold text-white hover:bg-[var(--udla-graphite)]"
                 >
                   Entregar
                 </button>
@@ -2528,7 +2646,7 @@ function CashModule({
           label="Esperado turno"
           value={formatCurrency(openRegister?.expectedAmount ?? 0)}
           icon={BadgeDollarSign}
-          tone="bg-cyan-600"
+          tone="bg-[var(--udla-charcoal)]"
         />
         <MetricCard
           label="Ventas registradas"
@@ -2983,7 +3101,7 @@ function ProductsModule({
           label="Con receta"
           value={`${linkedProducts}/${products.length}`}
           icon={BookOpen}
-          tone="bg-violet-600"
+          tone="bg-[var(--udla-orange)]"
         />
       </div>
 
@@ -3434,7 +3552,7 @@ function RecipesModule({
           <button
             type="button"
             onClick={startNewRecipe}
-            className="mb-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white transition hover:bg-violet-700"
+            className="mb-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--udla-orange)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--udla-orange-dark)]"
           >
             <PackagePlus className="h-4 w-4" />
             Nueva receta
@@ -3447,7 +3565,7 @@ function RecipesModule({
                 onClick={() => loadRecipe(recipe)}
                 className={`flex min-h-20 w-full items-center gap-3 rounded-lg border p-2 text-left transition ${
                   selectedRecipeId === recipe.id
-                    ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30"
+                    ? "border-[var(--udla-orange)] bg-[var(--udla-orange-soft)] dark:bg-[#241a16]"
                     : "border-black/10 bg-white hover:bg-zinc-50 dark:border-white/10 dark:bg-zinc-900"
                 }`}
               >
@@ -3536,7 +3654,7 @@ function RecipesModule({
                   <input
                     value={editor.name}
                     onChange={(event) => updateEditor("name", event.target.value)}
-                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   />
                 </label>
                 <label className="block">
@@ -3548,7 +3666,7 @@ function RecipesModule({
                     onChange={(event) =>
                       updateEditor("category", event.target.value)
                     }
-                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   />
                 </label>
                 <label className="block">
@@ -3561,7 +3679,7 @@ function RecipesModule({
                       updateEditor("portions", parseQuantityInput(event.target.value))
                     }
                     inputMode="decimal"
-                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   />
                 </label>
                 <label className="block">
@@ -3577,7 +3695,7 @@ function RecipesModule({
                       )
                     }
                     inputMode="numeric"
-                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   />
                 </label>
               </div>
@@ -3592,7 +3710,7 @@ function RecipesModule({
                     onChange={(event) =>
                       updateEditor("photoUrl", event.target.value)
                     }
-                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   />
                 </label>
                 <label className="block">
@@ -3608,7 +3726,7 @@ function RecipesModule({
                       )
                     }
                     inputMode="numeric"
-                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   />
                 </label>
                 <label className="block">
@@ -3624,7 +3742,7 @@ function RecipesModule({
                       )
                     }
                     inputMode="decimal"
-                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   />
                 </label>
               </div>
@@ -3640,7 +3758,7 @@ function RecipesModule({
                       updateEditor("procedure", event.target.value)
                     }
                     rows={4}
-                    className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   />
                 </label>
                 <div className="grid gap-3">
@@ -3652,7 +3770,7 @@ function RecipesModule({
                       value={allergensInput}
                       onChange={(event) => setAllergensInput(event.target.value)}
                       placeholder="Gluten, lacteos, mariscos"
-                      className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                      className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                     />
                   </label>
                   <label className="block">
@@ -3665,7 +3783,7 @@ function RecipesModule({
                         updateEditor("observations", event.target.value)
                       }
                       rows={3}
-                      className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                      className="mt-1 w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                     />
                   </label>
                 </div>
@@ -3827,7 +3945,7 @@ function RecipesModule({
                         );
                       }
                     }}
-                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   >
                     {rawMaterials.map((material) => (
                       <option key={material.id} value={material.id}>
@@ -3846,7 +3964,7 @@ function RecipesModule({
                       setNewIngredientGrossQuantity(event.target.value)
                     }
                     inputMode="decimal"
-                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   />
                 </label>
                 <label className="block">
@@ -3859,7 +3977,7 @@ function RecipesModule({
                       setNewIngredientYieldPercent(event.target.value)
                     }
                     inputMode="decimal"
-                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   />
                 </label>
                 <label className="block">
@@ -3871,7 +3989,7 @@ function RecipesModule({
                     onChange={(event) =>
                       setNewIngredientWasteType(event.target.value)
                     }
-                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-violet-600 dark:border-white/10 dark:bg-zinc-950"
+                    className="mt-1 h-11 w-full rounded-lg border border-black/10 bg-white px-3 text-sm outline-none focus:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
                   />
                 </label>
                 <button
@@ -3978,7 +4096,7 @@ function InventoryModule({
         <MetricCard label="Materias primas" value={rawMaterials.length.toString()} icon={Boxes} tone="bg-orange-600" />
         <MetricCard label="Alertas stock" value={lowStock.length.toString()} icon={AlertTriangle} tone="bg-red-600" />
         <MetricCard label="Inventario valorizado" value={formatCurrency(inventoryValue)} icon={BadgeDollarSign} tone="bg-emerald-600" />
-        <MetricCard label="Mermas registradas" value={formatCurrency(wasteValue)} icon={Activity} tone="bg-violet-600" />
+        <MetricCard label="Mermas registradas" value={formatCurrency(wasteValue)} icon={Activity} tone="bg-[var(--udla-orange)]" />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
@@ -4239,7 +4357,7 @@ function PurchasesModule({
           label="Compras registradas"
           value={purchases.length.toString()}
           icon={ShoppingCart}
-          tone="bg-sky-600"
+          tone="bg-[var(--udla-charcoal)]"
         />
         <MetricCard
           label="Recepcionadas"
@@ -5459,6 +5577,1017 @@ function createBlankCustomerInteractionDraft(
   };
 }
 
+const operationalDocumentTypeOptions: Array<{
+  type: OperationalDocumentType;
+  label: string;
+  icon: LucideIcon;
+}> = [
+  { type: "table_prebill", label: "Pre-cuenta", icon: ReceiptText },
+  { type: "payment_receipt", label: "Comprobante de pago", icon: CreditCard },
+  { type: "kitchen_ticket", label: "Comanda cocina", icon: ChefHat },
+  { type: "reservation_sheet", label: "Ficha de reserva", icon: CalendarCheck },
+  { type: "cash_close", label: "Cierre de caja", icon: Calculator },
+];
+
+interface OperationalDocumentPreview {
+  title: string;
+  subtitle: string;
+  meta: Array<{ label: string; value: string }>;
+  lines: Array<{ label: string; value: string }>;
+  totals: Array<{ label: string; value: string; strong?: boolean }>;
+  notes: string[];
+  payload: Record<string, unknown>;
+}
+
+function DocumentsModule({
+  onGenerateDocument,
+}: {
+  onGenerateDocument: (document: OperationalDocumentDraft) => string;
+}) {
+  const {
+    orders,
+    cashRegisters,
+    cashMovements,
+    reservations,
+    customers,
+    operationalDocuments,
+    settings,
+  } = useRestaurantData();
+  const [documentType, setDocumentType] =
+    useState<OperationalDocumentType>("table_prebill");
+  const [selectedOrderId, setSelectedOrderId] = useState(orders[0]?.id ?? "");
+  const [selectedRegisterId, setSelectedRegisterId] = useState(
+    cashRegisters[0]?.id ?? "",
+  );
+  const [selectedReservationId, setSelectedReservationId] = useState(
+    reservations[0]?.id ?? "",
+  );
+
+  const effectiveOrderId = orders.some((order) => order.id === selectedOrderId)
+    ? selectedOrderId
+    : orders[0]?.id ?? "";
+  const effectiveRegisterId = cashRegisters.some(
+    (register) => register.id === selectedRegisterId,
+  )
+    ? selectedRegisterId
+    : cashRegisters[0]?.id ?? "";
+  const effectiveReservationId = reservations.some(
+    (reservation) => reservation.id === selectedReservationId,
+  )
+    ? selectedReservationId
+    : reservations[0]?.id ?? "";
+  const selectedOrder =
+    orders.find((order) => order.id === effectiveOrderId) ?? orders[0];
+  const selectedRegister =
+    cashRegisters.find((register) => register.id === effectiveRegisterId) ??
+    cashRegisters[0];
+  const selectedReservation =
+    reservations.find((reservation) => reservation.id === effectiveReservationId) ??
+    reservations[0];
+  const selectedCustomer = selectedReservation
+    ? customers.find((customer) => customer.id === selectedReservation.customerId)
+    : undefined;
+  const preview = buildOperationalDocumentPreview({
+    type: documentType,
+    order: selectedOrder,
+    cashRegister: selectedRegister,
+    cashMovements,
+    reservation: selectedReservation,
+    customer: selectedCustomer,
+  });
+  const documentsToday = operationalDocuments.filter(
+    (document) =>
+      new Date(document.printedAt).toDateString() === new Date().toDateString(),
+  ).length;
+  const latestDocument = operationalDocuments[0];
+
+  const handleGenerate = () => {
+    const createdId = onGenerateDocument({
+      type: documentType,
+      title: preview.title,
+      orderId: selectedOrder?.id,
+      cashRegisterId:
+        documentType === "cash_close" ? selectedRegister?.id : undefined,
+      reservationId:
+        documentType === "reservation_sheet"
+          ? selectedReservation?.id
+          : undefined,
+      payload: preview.payload,
+    });
+
+    if (createdId && typeof window !== "undefined") {
+      window.setTimeout(() => window.print(), 150);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader
+        eyebrow="Documentos"
+        title="Impresion operativa y respaldos de turno"
+        description="Plantillas persistibles para comandas, pre-cuentas, comprobantes, reservas y cierres con trazabilidad en auditoria."
+      />
+
+      <div className="grid gap-4 lg:grid-cols-4">
+        <MetricCard
+          label="Documentos"
+          value={operationalDocuments.length.toString()}
+          icon={Printer}
+          tone="bg-zinc-900"
+        />
+        <MetricCard
+          label="Emitidos hoy"
+          value={documentsToday.toString()}
+          icon={ClipboardCheck}
+          tone="bg-emerald-600"
+        />
+        <MetricCard
+          label="Plantillas"
+          value={operationalDocumentTypeOptions.length.toString()}
+          icon={ReceiptText}
+          tone="bg-[var(--udla-charcoal)]"
+        />
+        <MetricCard
+          label="Ultima impresion"
+          value={latestDocument ? formatTime(latestDocument.printedAt) : "Sin datos"}
+          icon={Clock}
+          tone="bg-amber-600"
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <Panel title="Generador" icon={Printer}>
+          <div className="grid gap-4">
+            <label className="grid gap-2 text-sm font-semibold">
+              Tipo de documento
+              <select
+                value={documentType}
+                onChange={(event) =>
+                  setDocumentType(event.target.value as OperationalDocumentType)
+                }
+                className="h-11 rounded-lg border border-black/10 bg-white px-3 text-sm dark:border-white/10 dark:bg-zinc-900"
+              >
+                {operationalDocumentTypeOptions.map((option) => (
+                  <option key={option.type} value={option.type}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-semibold">
+                  Pedido
+                <select
+                  value={effectiveOrderId}
+                  onChange={(event) => setSelectedOrderId(event.target.value)}
+                  className="h-11 rounded-lg border border-black/10 bg-white px-3 text-sm dark:border-white/10 dark:bg-zinc-900"
+                >
+                  {orders.map((order) => (
+                    <option key={order.id} value={order.id}>
+                      {order.number} · Mesa {order.tableNumber}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="grid gap-2 text-sm font-semibold">
+                  Caja
+                <select
+                  value={effectiveRegisterId}
+                  onChange={(event) => setSelectedRegisterId(event.target.value)}
+                  className="h-11 rounded-lg border border-black/10 bg-white px-3 text-sm dark:border-white/10 dark:bg-zinc-900"
+                >
+                  {cashRegisters.map((register) => (
+                    <option key={register.id} value={register.id}>
+                      {register.status === "open" ? "Abierta" : "Cerrada"} ·{" "}
+                      {formatCurrency(register.expectedAmount)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label className="grid gap-2 text-sm font-semibold">
+              Reserva
+              <select
+                value={effectiveReservationId}
+                onChange={(event) => setSelectedReservationId(event.target.value)}
+                className="h-11 rounded-lg border border-black/10 bg-white px-3 text-sm dark:border-white/10 dark:bg-zinc-900"
+              >
+                {reservations.map((reservation) => (
+                  <option key={reservation.id} value={reservation.id}>
+                    {reservation.customerName} · {reservation.date}{" "}
+                    {reservation.time}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className="grid gap-2">
+              {operationalDocumentTypeOptions.map((option) => {
+                const Icon = option.icon;
+                const active = option.type === documentType;
+                return (
+                  <button
+                    key={option.type}
+                    type="button"
+                    onClick={() => setDocumentType(option.type)}
+                    className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition ${
+                      active
+                        ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-950"
+                        : "border-black/10 bg-zinc-50 text-zinc-700 hover:border-zinc-400 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-200"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 font-semibold">
+                      <Icon className="h-4 w-4" />
+                      {option.label}
+                    </span>
+                    <span className="text-xs opacity-70">
+                      {getOperationalDocumentScope(option.type)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleGenerate}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950"
+            >
+              <Printer className="h-4 w-4" />
+              Registrar e imprimir
+            </button>
+          </div>
+        </Panel>
+
+        <Panel title="Vista imprimible" icon={ReceiptText}>
+          <div
+            data-print-document="true"
+            className="mx-auto w-full max-w-[460px] rounded-lg border border-dashed border-zinc-300 bg-white p-5 font-mono text-zinc-950 shadow-sm"
+          >
+            <div className="border-b border-zinc-200 pb-4 text-center">
+              <div className="mx-auto mb-3 flex w-fit justify-center rounded-lg bg-zinc-950 px-3 py-2">
+                <Image
+                  src={getSafeLogoUrl(settings.logoUrl)}
+                  alt={`Logo ${settings.academyName}`}
+                  width={150}
+                  height={43}
+                  className="h-auto max-h-10 w-auto object-contain"
+                />
+              </div>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                {settings.restaurantName}
+              </p>
+              <h3 className="mt-2 text-xl font-bold">{preview.title}</h3>
+              <p className="mt-1 text-sm text-zinc-500">{preview.subtitle}</p>
+            </div>
+
+            <div className="mt-4 space-y-2 text-sm">
+              {preview.meta.map((item) => (
+                <div key={item.label} className="flex justify-between gap-4">
+                  <span className="text-zinc-500">{item.label}</span>
+                  <span className="text-right font-semibold">{item.value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 border-y border-zinc-200 py-3">
+              {preview.lines.map((line) => (
+                <div
+                  key={`${line.label}-${line.value}`}
+                  className="flex justify-between gap-4 py-1 text-sm"
+                >
+                  <span>{line.label}</span>
+                  <span className="text-right">{line.value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 space-y-1 text-sm">
+              {preview.totals.map((total) => (
+                <div
+                  key={total.label}
+                  className={`flex justify-between gap-4 ${
+                    total.strong ? "text-base font-bold" : ""
+                  }`}
+                >
+                  <span>{total.label}</span>
+                  <span>{total.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {preview.notes.length > 0 ? (
+              <div className="mt-4 rounded-lg bg-zinc-100 p-3 text-xs leading-5">
+                {preview.notes.map((note) => (
+                  <p key={note}>{note}</p>
+                ))}
+              </div>
+            ) : null}
+
+            <p className="mt-5 text-center text-xs text-zinc-500">
+              {formatDateTimeLabel(new Date().toISOString())}
+            </p>
+          </div>
+        </Panel>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <Panel title="Historial de impresion" icon={ClipboardCheck}>
+          <div className="space-y-3">
+            {operationalDocuments.slice(0, 8).map((document) => (
+              <div
+                key={document.id}
+                className="flex flex-col gap-2 rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <p className="font-semibold">{document.title}</p>
+                  <p className="text-sm text-zinc-500">
+                    {getOperationalDocumentLabel(document.type)} ·{" "}
+                    {document.orderNumber ?? document.reservationId ?? "Turno"} ·{" "}
+                    {document.printedBy}
+                  </p>
+                </div>
+                <span className="text-sm font-semibold">
+                  {formatDateTimeLabel(document.printedAt)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel title="Cobertura" icon={ListChecks}>
+          <div className="space-y-3">
+            {operationalDocumentTypeOptions.map((option) => {
+              const count = operationalDocuments.filter(
+                (document) => document.type === option.type,
+              ).length;
+              const Icon = option.icon;
+              return (
+                <div
+                  key={option.type}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-zinc-800 dark:bg-zinc-950 dark:text-zinc-100">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="font-semibold">{option.label}</p>
+                      <p className="text-sm text-zinc-500">
+                        {getOperationalDocumentScope(option.type)}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-lg font-semibold">{count}</span>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function buildOperationalDocumentPreview({
+  type,
+  order,
+  cashRegister,
+  cashMovements,
+  reservation,
+  customer,
+}: {
+  type: OperationalDocumentType;
+  order?: Order;
+  cashRegister?: CashRegister;
+  cashMovements: CashMovement[];
+  reservation?: Reservation;
+  customer?: Customer;
+}): OperationalDocumentPreview {
+  const orderSubtotal =
+    order?.items.reduce(
+      (total, item) => total + item.quantity * item.unitPrice,
+      0,
+    ) ?? 0;
+  const orderLines =
+    order?.items.map((item) => ({
+      label: `${numberFormatter.format(item.quantity)}x ${item.productName}`,
+      value: formatCurrency(item.quantity * item.unitPrice),
+    })) ?? [];
+
+  if (type === "kitchen_ticket") {
+    return {
+      title: order ? `Comanda ${order.number}` : "Comanda cocina",
+      subtitle: order ? `Mesa ${order.tableNumber}` : "Sin pedido seleccionado",
+      meta: [
+        { label: "Estado", value: order ? orderStatusMeta[order.status].label : "-" },
+        { label: "Mesero", value: order?.waiter ?? "-" },
+        { label: "Hora", value: order ? formatTime(order.createdAt) : "-" },
+      ],
+      lines:
+        order?.items.map((item) => ({
+          label: `${numberFormatter.format(item.quantity)}x ${item.productName}`,
+          value: [item.station, ...item.modifiers].join(" · "),
+        })) ?? [],
+      totals: [],
+      notes:
+        order?.items
+          .map((item) => item.notes)
+          .filter((note): note is string => Boolean(note)) ?? [],
+      payload: {
+        type,
+        orderNumber: order?.number ?? null,
+        table: order?.tableNumber ?? null,
+        items: order?.items ?? [],
+      },
+    };
+  }
+
+  if (type === "payment_receipt") {
+    return {
+      title: order ? `Comprobante ${order.number}` : "Comprobante de pago",
+      subtitle: order ? `Mesa ${order.tableNumber}` : "Sin pedido seleccionado",
+      meta: [
+        { label: "Pedido", value: order?.number ?? "-" },
+        { label: "Fecha", value: formatDateTimeLabel(new Date().toISOString()) },
+        { label: "Cajero", value: "Caja activa" },
+      ],
+      lines: orderLines,
+      totals: [
+        { label: "Subtotal", value: formatCurrency(orderSubtotal) },
+        { label: "Descuento", value: formatCurrency(order?.discount ?? 0) },
+        { label: "Propina", value: formatCurrency(order?.tip ?? 0) },
+        { label: "Total pagado", value: formatCurrency(order?.total ?? 0), strong: true },
+      ],
+      notes: ["Operacion asociada al cierre de caja y auditoria."],
+      payload: {
+        type,
+        orderNumber: order?.number ?? null,
+        subtotal: orderSubtotal,
+        discount: order?.discount ?? 0,
+        tip: order?.tip ?? 0,
+        total: order?.total ?? 0,
+      },
+    };
+  }
+
+  if (type === "cash_close") {
+    const sales = cashMovements
+      .filter((movement) => movement.type === "sale")
+      .reduce((total, movement) => total + movement.amount, 0);
+    const tips = cashMovements
+      .filter((movement) => movement.type === "tip")
+      .reduce((total, movement) => total + movement.amount, 0);
+    const outflows = cashMovements
+      .filter((movement) => ["withdrawal", "advance"].includes(movement.type))
+      .reduce((total, movement) => total + movement.amount, 0);
+
+    return {
+      title: "Cierre de caja",
+      subtitle: cashRegister
+        ? `${cashRegister.status === "open" ? "Caja abierta" : "Caja cerrada"}`
+        : "Sin caja seleccionada",
+      meta: [
+        { label: "Apertura", value: cashRegister ? formatTime(cashRegister.openedAt) : "-" },
+        { label: "Responsable", value: cashRegister?.openedBy ?? "-" },
+        { label: "Estado", value: cashRegister?.status === "closed" ? "Cerrada" : "Abierta" },
+      ],
+      lines: [
+        { label: "Monto apertura", value: formatCurrency(cashRegister?.openingAmount ?? 0) },
+        { label: "Ventas", value: formatCurrency(sales) },
+        { label: "Propinas", value: formatCurrency(tips) },
+        { label: "Retiros y adelantos", value: formatCurrency(outflows) },
+      ],
+      totals: [
+        {
+          label: "Esperado",
+          value: formatCurrency(cashRegister?.expectedAmount ?? 0),
+          strong: true,
+        },
+        {
+          label: "Diferencia",
+          value: formatCurrency(cashRegister?.differenceAmount ?? 0),
+        },
+      ],
+      notes: cashRegister?.notes ? [cashRegister.notes] : [],
+      payload: {
+        type,
+        cashRegisterId: cashRegister?.id ?? null,
+        openingAmount: cashRegister?.openingAmount ?? 0,
+        expectedAmount: cashRegister?.expectedAmount ?? 0,
+        sales,
+        tips,
+        outflows,
+      },
+    };
+  }
+
+  if (type === "reservation_sheet") {
+    return {
+      title: reservation
+        ? `Reserva ${reservation.customerName}`
+        : "Ficha de reserva",
+      subtitle: reservation
+        ? `${reservation.date} ${reservation.time}`
+        : "Sin reserva seleccionada",
+      meta: [
+        { label: "Cliente", value: reservation?.customerName ?? "-" },
+        { label: "Telefono", value: reservation?.customerPhone ?? customer?.phone ?? "-" },
+        {
+          label: "Mesa",
+          value: reservation?.tableNumber ? `Mesa ${reservation.tableNumber}` : "-",
+        },
+      ],
+      lines: [
+        { label: "Comensales", value: String(reservation?.partySize ?? 0) },
+        { label: "Canal", value: reservation?.channel ?? "-" },
+        { label: "Ocasion", value: reservation?.occasion || "-" },
+        { label: "Alergias", value: customer?.allergies.join(", ") || "-" },
+      ],
+      totals: [],
+      notes: [
+        reservation?.notes ?? "",
+        customer?.preferences ?? "",
+        customer?.notes ?? "",
+      ].filter(Boolean),
+      payload: {
+        type,
+        reservationId: reservation?.id ?? null,
+        customer: reservation?.customerName ?? null,
+        partySize: reservation?.partySize ?? null,
+        allergies: customer?.allergies ?? [],
+      },
+    };
+  }
+
+  return {
+    title: order ? `Pre-cuenta ${order.number}` : "Pre-cuenta",
+    subtitle: order ? `Mesa ${order.tableNumber}` : "Sin pedido seleccionado",
+    meta: [
+      { label: "Pedido", value: order?.number ?? "-" },
+      { label: "Mesero", value: order?.waiter ?? "-" },
+      { label: "Estado", value: order ? orderStatusMeta[order.status].label : "-" },
+    ],
+    lines: orderLines,
+    totals: [
+      { label: "Subtotal", value: formatCurrency(orderSubtotal) },
+      { label: "Descuento", value: formatCurrency(order?.discount ?? 0) },
+      { label: "Propina sugerida", value: formatCurrency(order?.tip ?? 0) },
+      { label: "Total", value: formatCurrency(order?.total ?? 0), strong: true },
+    ],
+    notes:
+      order?.items
+        .map((item) => item.notes)
+        .filter((note): note is string => Boolean(note)) ?? [],
+    payload: {
+      type,
+      orderNumber: order?.number ?? null,
+      table: order?.tableNumber ?? null,
+      subtotal: orderSubtotal,
+      discount: order?.discount ?? 0,
+      tip: order?.tip ?? 0,
+      total: order?.total ?? 0,
+      items: order?.items ?? [],
+    },
+  };
+}
+
+function getOperationalDocumentLabel(type: OperationalDocumentType) {
+  return (
+    operationalDocumentTypeOptions.find((option) => option.type === type)?.label ??
+    type
+  );
+}
+
+function getOperationalDocumentScope(type: OperationalDocumentType) {
+  const labels: Record<OperationalDocumentType, string> = {
+    kitchen_ticket: "Cocina",
+    table_prebill: "Mesa",
+    payment_receipt: "Caja",
+    cash_close: "Turno",
+    reservation_sheet: "Salon",
+  };
+
+  return labels[type];
+}
+
+function SettingsModule({
+  onSaveSettings,
+}: {
+  onSaveSettings: (settings: RestaurantSettingsDraft) => void;
+}) {
+  const { settings } = useRestaurantData();
+  const [draft, setDraft] = useState<RestaurantSettingsDraft>(settings);
+  const activeZones = draft.tableZones.filter((zone) => zone.active);
+  const activePrinters = draft.printStations.filter(
+    (station) => station.autoPrint,
+  );
+  const activeSeries = draft.documentSeries.filter((series) => series.enabled);
+
+  const updateField = <K extends keyof RestaurantSettingsDraft>(
+    key: K,
+    value: RestaurantSettingsDraft[K],
+  ) => {
+    setDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  const updateSeries = (
+    index: number,
+    updates: Partial<RestaurantSettingsDraft["documentSeries"][number]>,
+  ) => {
+    setDraft((current) => ({
+      ...current,
+      documentSeries: current.documentSeries.map((series, currentIndex) =>
+        currentIndex === index ? { ...series, ...updates } : series,
+      ),
+    }));
+  };
+
+  const updatePrintStation = (
+    index: number,
+    updates: Partial<RestaurantSettingsDraft["printStations"][number]>,
+  ) => {
+    setDraft((current) => ({
+      ...current,
+      printStations: current.printStations.map((station, currentIndex) =>
+        currentIndex === index ? { ...station, ...updates } : station,
+      ),
+    }));
+  };
+
+  const updateOperatingHour = (
+    index: number,
+    updates: Partial<RestaurantSettingsDraft["operatingHours"][number]>,
+  ) => {
+    setDraft((current) => ({
+      ...current,
+      operatingHours: current.operatingHours.map((hour, currentIndex) =>
+        currentIndex === index ? { ...hour, ...updates } : hour,
+      ),
+    }));
+  };
+
+  const updateTableZone = (
+    index: number,
+    updates: Partial<RestaurantSettingsDraft["tableZones"][number]>,
+  ) => {
+    setDraft((current) => ({
+      ...current,
+      tableZones: current.tableZones.map((zone, currentIndex) =>
+        currentIndex === index ? { ...zone, ...updates } : zone,
+      ),
+    }));
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    onSaveSettings(draft);
+  };
+
+  return (
+    <form className="space-y-6" onSubmit={handleSubmit}>
+      <SectionHeader
+        eyebrow="Configuracion"
+        title="Identidad institucional y reglas del local"
+        description="Parametros persistibles para branding, documentos, estaciones de impresion, horarios y zonas operativas."
+      />
+
+      <div className="grid gap-4 lg:grid-cols-4">
+        <MetricCard
+          label="Zonas activas"
+          value={activeZones.length.toString()}
+          icon={Table2}
+          tone="bg-emerald-600"
+        />
+        <MetricCard
+          label="Capacidad"
+          value={activeZones
+            .reduce((total, zone) => total + zone.capacity, 0)
+            .toString()}
+          icon={Users}
+          tone="bg-[var(--udla-charcoal)]"
+        />
+        <MetricCard
+          label="Auto impresion"
+          value={activePrinters.length.toString()}
+          icon={Printer}
+          tone="bg-zinc-900"
+        />
+        <MetricCard
+          label="Series activas"
+          value={activeSeries.length.toString()}
+          icon={ReceiptText}
+          tone="bg-amber-600"
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <Panel title="Identidad de academia" icon={Store}>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-zinc-950 p-4 ring-1 ring-black/10 dark:ring-white/10">
+              <Image
+                src={getSafeLogoUrl(draft.logoUrl)}
+                alt={`Logo ${draft.academyName}`}
+                width={260}
+                height={74}
+                className="h-auto max-h-20 w-auto object-contain"
+              />
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <TextInput
+                label="Nombre comercial"
+                value={draft.restaurantName}
+                onChange={(value) => updateField("restaurantName", value)}
+              />
+              <TextInput
+                label="Academia"
+                value={draft.academyName}
+                onChange={(value) => updateField("academyName", value)}
+              />
+              <TextInput
+                label="Razon social"
+                value={draft.legalName}
+                onChange={(value) => updateField("legalName", value)}
+              />
+              <TextInput
+                label="RUT"
+                value={draft.taxId}
+                onChange={(value) => updateField("taxId", value)}
+              />
+              <TextInput
+                label="Telefono"
+                value={draft.phone}
+                onChange={(value) => updateField("phone", value)}
+              />
+              <TextInput
+                label="Email"
+                value={draft.email}
+                onChange={(value) => updateField("email", value)}
+              />
+            </div>
+
+            <TextInput
+              label="Direccion"
+              value={draft.address}
+              onChange={(value) => updateField("address", value)}
+            />
+            <TextInput
+              label="Logo"
+              value={draft.logoUrl}
+              onChange={(value) => updateField("logoUrl", value)}
+            />
+          </div>
+        </Panel>
+
+        <Panel title="Reglas comerciales" icon={Calculator}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <NumberInput
+              label="Servicio sugerido"
+              value={draft.serviceChargePercent}
+              suffix="%"
+              onChange={(value) => updateField("serviceChargePercent", value)}
+            />
+            <NumberInput
+              label="Impuesto referencial"
+              value={draft.taxPercent}
+              suffix="%"
+              onChange={(value) => updateField("taxPercent", value)}
+            />
+            <TextInput
+              label="Moneda"
+              value={draft.currency}
+              onChange={(value) => updateField("currency", value)}
+            />
+            <TextInput
+              label="Locale"
+              value={draft.locale}
+              onChange={(value) => updateField("locale", value)}
+            />
+          </div>
+
+          <div className="mt-5 grid gap-2">
+            {draft.operatingHours.map((hour, index) => (
+              <div
+                key={hour.day}
+                className="grid gap-2 rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900 md:grid-cols-[1fr_110px_110px_90px]"
+              >
+                <span className="self-center font-semibold">{hour.day}</span>
+                <input
+                  type="time"
+                  value={hour.open}
+                  onChange={(event) =>
+                    updateOperatingHour(index, { open: event.target.value })
+                  }
+                  className="h-10 rounded-lg border border-black/10 bg-white px-3 text-sm dark:border-white/10 dark:bg-zinc-950"
+                />
+                <input
+                  type="time"
+                  value={hour.close}
+                  onChange={(event) =>
+                    updateOperatingHour(index, { close: event.target.value })
+                  }
+                  className="h-10 rounded-lg border border-black/10 bg-white px-3 text-sm dark:border-white/10 dark:bg-zinc-950"
+                />
+                <label className="flex items-center gap-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={hour.enabled}
+                    onChange={(event) =>
+                      updateOperatingHour(index, { enabled: event.target.checked })
+                    }
+                  />
+                  Activo
+                </label>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Panel title="Series de documentos" icon={ReceiptText}>
+          <div className="space-y-3">
+            {draft.documentSeries.map((series, index) => (
+              <div
+                key={series.type}
+                className="grid gap-3 rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900 md:grid-cols-[1fr_90px_120px_90px]"
+              >
+                <span className="self-center font-semibold">
+                  {getOperationalDocumentLabel(series.type)}
+                </span>
+                <input
+                  value={series.prefix}
+                  onChange={(event) =>
+                    updateSeries(index, { prefix: event.target.value })
+                  }
+                  className="h-10 rounded-lg border border-black/10 bg-white px-3 text-sm font-semibold uppercase dark:border-white/10 dark:bg-zinc-950"
+                />
+                <input
+                  type="number"
+                  min={1}
+                  value={series.nextNumber}
+                  onChange={(event) =>
+                    updateSeries(index, {
+                      nextNumber: Number(event.target.value),
+                    })
+                  }
+                  className="h-10 rounded-lg border border-black/10 bg-white px-3 text-sm dark:border-white/10 dark:bg-zinc-950"
+                />
+                <label className="flex items-center gap-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={series.enabled}
+                    onChange={(event) =>
+                      updateSeries(index, { enabled: event.target.checked })
+                    }
+                  />
+                  Activa
+                </label>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel title="Estaciones de impresion" icon={Printer}>
+          <div className="space-y-3">
+            {draft.printStations.map((station, index) => (
+              <div
+                key={station.id}
+                className="grid gap-3 rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900 md:grid-cols-[1fr_1fr_96px]"
+              >
+                <div>
+                  <p className="font-semibold">{station.name}</p>
+                  <p className="text-sm text-zinc-500">{station.area}</p>
+                </div>
+                <input
+                  value={station.printerName}
+                  onChange={(event) =>
+                    updatePrintStation(index, {
+                      printerName: event.target.value,
+                    })
+                  }
+                  className="h-10 rounded-lg border border-black/10 bg-white px-3 text-sm dark:border-white/10 dark:bg-zinc-950"
+                />
+                <label className="flex items-center gap-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={station.autoPrint}
+                    onChange={(event) =>
+                      updatePrintStation(index, {
+                        autoPrint: event.target.checked,
+                      })
+                    }
+                  />
+                  Auto
+                </label>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      </div>
+
+      <Panel title="Zonas de salon" icon={Table2}>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {draft.tableZones.map((zone, index) => (
+            <div
+              key={zone.name}
+              className="rounded-lg border border-black/10 bg-zinc-50 p-4 dark:border-white/10 dark:bg-zinc-900"
+            >
+              <span className={`block h-2 rounded-full ${zone.color}`} />
+              <TextInput
+                label="Zona"
+                value={zone.name}
+                onChange={(value) => updateTableZone(index, { name: value })}
+              />
+              <NumberInput
+                label="Capacidad"
+                value={zone.capacity}
+                onChange={(value) => updateTableZone(index, { capacity: value })}
+              />
+              <label className="mt-3 flex items-center gap-2 text-sm font-semibold">
+                <input
+                  type="checkbox"
+                  checked={zone.active}
+                  onChange={(event) =>
+                    updateTableZone(index, { active: event.target.checked })
+                  }
+                />
+                Zona activa
+              </label>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      <div className="flex justify-end">
+        <button
+          type="submit"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950"
+        >
+          <Settings className="h-4 w-4" />
+          Guardar configuracion
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function TextInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="mt-3 grid gap-2 text-sm font-semibold">
+      {label}
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 rounded-lg border border-black/10 bg-white px-3 text-sm dark:border-white/10 dark:bg-zinc-950"
+      />
+    </label>
+  );
+}
+
+function NumberInput({
+  label,
+  value,
+  suffix,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  suffix?: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="mt-3 grid gap-2 text-sm font-semibold">
+      {label}
+      <span className="flex h-10 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950">
+        <input
+          type="number"
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+          className="min-w-0 flex-1 bg-transparent px-3 text-sm outline-none"
+        />
+        {suffix ? (
+          <span className="flex items-center border-l border-black/10 px-3 text-sm text-zinc-500 dark:border-white/10">
+            {suffix}
+          </span>
+        ) : null}
+      </span>
+    </label>
+  );
+}
+
 function ReportsModule() {
   const snapshot = useRestaurantData();
   const reports = buildOperationalReports(snapshot);
@@ -5482,7 +6611,7 @@ function ReportsModule() {
           label="Margen estimado"
           value={formatCurrency(reports.grossMargin)}
           icon={BarChart3}
-          tone="bg-cyan-600"
+          tone="bg-[var(--udla-charcoal)]"
         />
         <MetricCard
           label="Mermas valorizadas"
@@ -5509,13 +6638,13 @@ function ReportsModule() {
           label="Compras registradas"
           value={formatCurrency(reports.purchaseTotal)}
           icon={ShoppingCart}
-          tone="bg-sky-600"
+          tone="bg-[var(--udla-charcoal)]"
         />
         <MetricCard
           label="Food cost real"
           value={formatPercent(reports.foodCostPercent)}
           icon={Calculator}
-          tone="bg-violet-600"
+          tone="bg-[var(--udla-orange)]"
         />
         <MetricCard
           label="Ticket promedio"
@@ -6757,6 +7886,7 @@ function getAuditActionLabel(action: string) {
     "customer.upsert": "Cliente guardado",
     "reservation.upsert": "Reserva guardada",
     "crm.interaction.create": "Seguimiento CRM",
+    "document.print": "Documento impreso",
     "purchase.receive": "Compra recepcionada",
     "recipe.upsert": "Receta guardada",
     "product.upsert": "Producto guardado",
@@ -6774,6 +7904,7 @@ function getAuditEntityLabel(entityType: string) {
     employee: "Trabajador",
     customer: "Cliente",
     reservation: "Reserva",
+    operational_document: "Documento",
     purchase: "Compra",
     recipe: "Receta",
     product: "Producto",
@@ -6802,154 +7933,3011 @@ function formatAuditMetadataValue(value: unknown) {
   return String(value);
 }
 
-function EducationModule() {
-  return (
-    <div className="space-y-6">
-      <SectionHeader
-        eyebrow="Demo academico"
-        title="Simulador educativo sin depender de la base de datos"
-        description="Permite al docente ensenar todos los modulos con datos controlados, escenarios guiados y practicas de administracion gastronomica."
-      />
+const EDUCATION_PROGRESS_KEY = "udla-education-proof-progress-v6";
+const EDUCATION_LEGACY_PROGRESS_KEYS = [
+  "udla-education-proof-progress-v5",
+  "udla-education-proof-progress-v4",
+  "udla-education-proof-progress-v3",
+  "udla-education-proof-progress-v2",
+  "udla-education-proof-progress-v1",
+];
 
-      <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-5 text-indigo-950">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase">Modo educativo activo</p>
-            <h2 className="mt-1 text-2xl font-semibold">
-              Este modulo trabaja con demo local y no escribe en Supabase
-            </h2>
-          </div>
-          <GraduationCap className="h-10 w-10" />
-        </div>
-      </div>
+interface EducationAction {
+  id: string;
+  moduleId: ModuleId;
+  label: string;
+  task: string;
+  outcome: string;
+}
 
-      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-        <Panel title="Ruta docente sugerida" icon={GraduationCap}>
-          <div className="space-y-3">
-            {educationSteps.map((step, index) => (
-              <div
-                key={step}
-                className="flex gap-3 rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-zinc-900"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-sm font-semibold text-white">
-                  {index + 1}
-                </span>
-                <p className="text-sm leading-6">{step}</p>
-              </div>
-            ))}
-          </div>
-        </Panel>
+interface EducationPhase {
+  id: string;
+  title: string;
+  scene: string;
+  goal: string;
+  caseNarrative: string;
+  actions: EducationAction[];
+}
 
-        <Panel title="Escenarios de practica" icon={ClipboardCheck}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              ["Servicio lleno", "Mesas ocupadas, cocina con espera y caja activa."],
-              ["Merma de bodega", "Palta con rendimiento bajo y vencimiento cercano."],
-              ["Cierre de caja", "Ventas mixtas, propinas, retiro y diferencia."],
-              ["Costeo real", "Lomo con 70% de rendimiento y precio sugerido."],
-              ["Alergenos", "Pedido con restriccion y comanda visible."],
-              ["Proveedor caro", "Comparacion historica de precio por insumo."],
-              ["Reserva VIP", "Cliente con preferencias, alergias y seguimiento pendiente."],
-            ].map(([title, description]) => (
-              <div
-                key={title}
-                className="rounded-lg border border-black/10 bg-zinc-50 p-4 dark:border-white/10 dark:bg-zinc-900"
-              >
-                <p className="font-semibold">{title}</p>
-                <p className="mt-2 text-sm leading-5 text-zinc-600 dark:text-zinc-300">
-                  {description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      </div>
-    </div>
+interface EducationQuestionOption {
+  id: string;
+  label: string;
+}
+
+interface EducationPracticeField {
+  id: string;
+  label: string;
+  type: "text" | "number" | "select";
+  correctValue: string;
+  placeholder?: string;
+  helper?: string;
+  options?: Array<{ value: string; label: string }>;
+}
+
+interface EducationChallenge {
+  question: string;
+  options: EducationQuestionOption[];
+  correctOptionId: string;
+  practiceTitle: string;
+  practiceDescription: string;
+  fields: EducationPracticeField[];
+}
+
+const educationPhases: EducationPhase[] = [
+  {
+    id: "briefing",
+    title: "Briefing de turno",
+    scene: "El equipo llega antes del servicio y debe dejar listo el local.",
+    goal: "Preparar datos, roles y tablero operativo antes de recibir clientes.",
+    caseNarrative:
+      "Son las 09:00 y Paula Contreras abre el turno AM con $120.000 de caja inicial. En la revision previa aparece la reserva de Carolina Munoz para las 20:30, con 6 comensales y alergia a lacteos. El equipo del servicio queda organizado con Valentina Reyes como mesero, Felipe Araya en caja y Daniel Vega en bodega. Para no partir sin abastecimiento, se confirma que Carnes Andinas tiene el documento recepcionado y una confiabilidad de 96. La estacion que debe quedar lista para comandas es Cocina caliente, con impresora EPSON-Cocina-01 y autoimpresion activa.",
+    actions: [
+      {
+        id: "briefing-dashboard",
+        moduleId: "dashboard",
+        label: "Abrir turno operativo",
+        task: "Abre el turno AM con caja inicial, responsable y lectura de indicadores.",
+        outcome: "Turno abierto: el estudiante inicio operacion con caja y contexto.",
+      },
+      {
+        id: "briefing-reservations",
+        moduleId: "crm",
+        label: "Revisar reservas",
+        task: "Confirma reservas del turno, mesa asignada, hora y restricciones alimentarias.",
+        outcome: "Reservas revisadas: salon conoce la llegada critica del servicio.",
+      },
+      {
+        id: "briefing-employees",
+        moduleId: "employees",
+        label: "Asignar equipo",
+        task: "Revisa trabajadores activos, roles, turnos y costo por hora.",
+        outcome: "Equipo asignado: cada rol sabe que debe operar.",
+      },
+      {
+        id: "briefing-suppliers",
+        moduleId: "purchases",
+        label: "Verificar proveedores",
+        task: "Confirma proveedor critico, documento recibido y confiabilidad antes del servicio.",
+        outcome: "Proveedores verificados: abastecimiento critico queda respaldado.",
+      },
+      {
+        id: "briefing-stations",
+        moduleId: "documents",
+        label: "Preparar impresiones",
+        task: "Revisa estaciones de comanda y comprobantes para que cada area reciba documentos.",
+        outcome: "Estaciones listas: cocina, barra y caja pueden emitir respaldos.",
+      },
+    ],
+  },
+  {
+    id: "arrival",
+    title: "Llegada y apertura de mesa",
+    scene: "Llega una reserva con alergia declarada y solicita mesa disponible.",
+    goal: "Tomar la mesa, asociar cliente y abrir la atencion.",
+    caseNarrative:
+      "Carolina Munoz llega para su reserva de las 20:30 con 6 comensales, mesa 3 en Salon y alergia declarada a lacteos. La reserva debe pasar de confirmada a sentada, la mesa 3 debe quedar ocupada y asociada al Salon, y el pedido PR-0001 debe abrirse en estado pendiente con Valentina Reyes como mesero. Antes de ingresar productos, cocina caliente debe quedar informada de la alergia. El respaldo de salon corresponde a una ficha de reserva para 6 personas a las 20:30.",
+    actions: [
+      {
+        id: "arrival-crm",
+        moduleId: "crm",
+        label: "Identificar cliente",
+        task: "Busca la ficha del cliente, preferencias, alergias y reserva asociada.",
+        outcome: "Cliente identificado: alergias y preferencias quedan visibles para salon.",
+      },
+      {
+        id: "arrival-table",
+        moduleId: "tables",
+        label: "Tomar mesa",
+        task: "Selecciona una mesa libre o reservada y cambia su estado a ocupada.",
+        outcome: "Mesa tomada: la sala refleja el estado real de atencion.",
+      },
+      {
+        id: "arrival-order",
+        moduleId: "orders",
+        label: "Abrir pedido",
+        task: "Abre la cuenta de la mesa para iniciar la toma de productos.",
+        outcome: "Pedido abierto: la mesa ya puede recibir consumos.",
+      },
+      {
+        id: "arrival-allergy",
+        moduleId: "foodSafety",
+        label: "Confirmar alergia",
+        task: "Notifica alergia declarada al equipo antes de ingresar productos.",
+        outcome: "Alergia confirmada: cocina recibe la restriccion antes de producir.",
+      },
+      {
+        id: "arrival-reservation-document",
+        moduleId: "documents",
+        label: "Respaldar reserva",
+        task: "Genera la ficha de reserva con hora, mesa, comensales y alerta alimentaria.",
+        outcome: "Reserva respaldada: salon tiene evidencia operativa de la llegada.",
+      },
+    ],
+  },
+  {
+    id: "order",
+    title: "Pedido y comanda",
+    scene: "El cliente pide platos con modificadores y una observacion critica.",
+    goal: "Construir el pedido completo y emitir respaldo operativo.",
+    caseNarrative:
+      "La mesa 3 confirma 2 Lomo salteado, 1 Causa camaron palta y 2 Jugo natural. El Lomo salteado esta disponible, se vende a $14.900, tiene 22 minutos de preparacion y cuenta con 7.200 g de stock de lomo. El pedido debe quedar con el modificador Sin cebolla, y luego distribuirse como 2 items para cocina caliente, 1 para cuarto frio y 2 para barra. El respaldo operativo de cocina es una comanda COC-1052 enviada a la estacion hot.",
+    actions: [
+      {
+        id: "order-products",
+        moduleId: "products",
+        label: "Registrar producto",
+        task: "Registra un producto disponible con categoria, precio y tiempo de preparacion.",
+        outcome: "Producto registrado: la carta queda disponible para venta.",
+      },
+      {
+        id: "order-modifiers",
+        moduleId: "orders",
+        label: "Agregar productos",
+        task: "Agrega productos, modificadores, observaciones y cantidades a la cuenta.",
+        outcome: "Pedido tomado: cocina recibe informacion completa y clara.",
+      },
+      {
+        id: "order-documents",
+        moduleId: "documents",
+        label: "Emitir comanda",
+        task: "Genera una comanda de cocina o respaldo de impresion para el pedido.",
+        outcome: "Documento emitido: la operacion queda respaldada.",
+      },
+      {
+        id: "order-availability",
+        moduleId: "inventory",
+        label: "Validar disponibilidad",
+        task: "Comprueba stock, disponibilidad y categoria antes de confirmar el pedido.",
+        outcome: "Disponibilidad validada: venta queda alineada con inventario.",
+      },
+      {
+        id: "order-stations",
+        moduleId: "kitchen",
+        label: "Separar estaciones",
+        task: "Distribuye productos por cocina caliente, cuarto frio y barra.",
+        outcome: "Estaciones separadas: cada area recibe solo lo que debe producir.",
+      },
+    ],
+  },
+  {
+    id: "production",
+    title: "Produccion en cocina",
+    scene: "Cocina recibe comandas por estacion y debe cuidar receta, tiempo y seguridad.",
+    goal: "Preparar el pedido usando recetas tecnicas y control sanitario.",
+    caseNarrative:
+      "Cocina caliente recibe COC-1052. Rodrigo Fuentes toma la comanda en estacion hot y debe dejarla en estado listo. El Lomo salteado de la casa se audita con rendimiento de lomo de 70% y food cost de 31,4%. El control sanitario que respalda el servicio es de alergenos y temperatura, con medicion 1,8 C y resultado conforme. El tiempo objetivo es 22 minutos y el tiempo real aceptado es 18 minutos. Durante la produccion se detecta palta hass con madurez avanzada, por lo que corresponde registrar una merma de -320.",
+    actions: [
+      {
+        id: "production-kitchen",
+        moduleId: "kitchen",
+        label: "Gestionar comanda",
+        task: "Pasa la comanda por pendiente, preparacion y listo segun estacion.",
+        outcome: "Comanda gestionada: los tiempos quedan controlados.",
+      },
+      {
+        id: "production-recipes",
+        moduleId: "recipes",
+        label: "Auditar producto y receta",
+        task: "Audita rendimiento, costo real, margen y consistencia de receta tecnica.",
+        outcome: "Producto auditado: el estudiante justifica food cost y margen.",
+      },
+      {
+        id: "production-safety",
+        moduleId: "foodSafety",
+        label: "Registrar control sanitario",
+        task: "Registra temperatura, alergeno, vencimiento o resultado de control.",
+        outcome: "Control sanitario hecho: el riesgo queda trazado.",
+      },
+      {
+        id: "production-timing",
+        moduleId: "kitchen",
+        label: "Controlar tiempos",
+        task: "Contrasta tiempo objetivo y tiempo real para decidir si la comanda esta lista.",
+        outcome: "Tiempo controlado: cocina cumple el objetivo antes del despacho.",
+      },
+      {
+        id: "production-waste",
+        moduleId: "inventory",
+        label: "Registrar merma",
+        task: "Registra una merma por madurez, lote y responsable cuando corresponde.",
+        outcome: "Merma registrada: bodega mantiene costo y trazabilidad actualizados.",
+      },
+    ],
+  },
+  {
+    id: "warehouse",
+    title: "Bodega y abastecimiento",
+    scene: "El servicio consume insumos y bodega detecta stock bajo o vencimiento cercano.",
+    goal: "Mover inventario, registrar mermas y recepcionar compras.",
+    caseNarrative:
+      "Bodega debe descontar lomo de vacuno por venta mediante una salida manual de -430 bajo metodo FIFO. Para recuperar stock, se recepcionan 12.000 g de Carnes Andinas con documento F-PRUEBA-001 y lote CAR-0508-A. La palta hass vence el 2026-05-11 y debe priorizarse para uso. En proveedores, Costa Azul aparece valorizado con confiabilidad 91. En almacenamiento critico, el salmon fresco debe mantenerse a 0 a 2 C, bajo FIFO y con riesgo sanitario alto.",
+    actions: [
+      {
+        id: "warehouse-inventory",
+        moduleId: "inventory",
+        label: "Actualizar inventario",
+        task: "Revisa stock, costo neto real, lote, FIFO/LIFO y registra una salida o merma.",
+        outcome: "Inventario actualizado: stock y costo reflejan la operacion.",
+      },
+      {
+        id: "warehouse-purchases",
+        moduleId: "purchases",
+        label: "Recepcionar compra",
+        task: "Ingresa proveedor, documento, cantidad, costo, rendimiento, lote y vencimiento.",
+        outcome: "Compra recepcionada: bodega recupera stock trazable.",
+      },
+      {
+        id: "warehouse-expiry",
+        moduleId: "foodSafety",
+        label: "Priorizar vencimientos",
+        task: "Detecta insumos con vencimiento cercano y define uso prioritario seguro.",
+        outcome: "Vencimiento priorizado: cocina usa primero el insumo con mayor urgencia.",
+      },
+      {
+        id: "warehouse-supplier",
+        moduleId: "purchases",
+        label: "Evaluar proveedor",
+        task: "Revisa confiabilidad, estado documental y categoria del proveedor.",
+        outcome: "Proveedor evaluado: compras sabe si puede volver a abastecer.",
+      },
+      {
+        id: "warehouse-storage",
+        moduleId: "inventory",
+        label: "Verificar almacenamiento",
+        task: "Comprueba temperatura, metodo y riesgo sanitario del insumo critico.",
+        outcome: "Almacenamiento validado: el insumo queda conservado bajo criterio sanitario.",
+      },
+    ],
+  },
+  {
+    id: "close",
+    title: "Pago, cierre y control",
+    scene: "La mesa pide la cuenta, caja cobra y administracion revisa el resultado.",
+    goal: "Cerrar el ciclo completo con pago, reportes y auditoria.",
+    caseNarrative:
+      "La mesa paga PR-0001 con debito por $42.600 y propina de $4.260, dejando la caja cerrada. El documento de respaldo es el comprobante de pago REC-872 asociado al pedido PR-0001. Administracion revisa la venta de $42.600, food cost de 31,4% y margen esperado de $10.280. Despues del servicio se registra un mensaje de seguimiento CRM para Carolina Munoz con Valentina Reyes como responsable. La auditoria final exige 30 eventos, evidencia comprobable y turno cerrado.",
+    actions: [
+      {
+        id: "close-cash",
+        moduleId: "cash",
+        label: "Cobrar y cerrar caja",
+        task: "Registra medio de pago, propina, movimientos y cierre del turno de caja.",
+        outcome: "Caja cerrada: el turno queda cuadrado con movimientos trazables.",
+      },
+      {
+        id: "close-receipt",
+        moduleId: "documents",
+        label: "Imprimir respaldo",
+        task: "Genera pre-cuenta, comprobante de pago o cierre de caja.",
+        outcome: "Respaldo impreso: el cliente y caja tienen comprobante.",
+      },
+      {
+        id: "close-reports",
+        moduleId: "reports",
+        label: "Analizar reportes",
+        task: "Revisa ventas, margen, food cost, compras, mermas y rendimiento del equipo.",
+        outcome: "Reportes revisados: el estudiante interpreta el resultado del turno.",
+      },
+      {
+        id: "close-crm",
+        moduleId: "crm",
+        label: "Registrar seguimiento",
+        task: "Deja una interaccion post-servicio con preferencia, canal y responsable.",
+        outcome: "Seguimiento registrado: CRM conserva aprendizaje del servicio.",
+      },
+      {
+        id: "close-audit",
+        moduleId: "audit",
+        label: "Verificar auditoria",
+        task: "Confirma que pagos, documentos, reservas, recetas e inventario quedaron trazados.",
+        outcome: "Auditoria validada: el ciclo completo queda defendible.",
+      },
+    ],
+  },
+];
+
+const educationCoverageModules: ModuleId[] = [
+  "dashboard",
+  "employees",
+  "crm",
+  "tables",
+  "orders",
+  "products",
+  "documents",
+  "kitchen",
+  "recipes",
+  "foodSafety",
+  "inventory",
+  "purchases",
+  "cash",
+  "reports",
+  "audit",
+];
+
+const educationChallenges: Record<string, EducationChallenge> = {
+  "briefing-dashboard": {
+    question:
+      "Antes de recibir clientes, que operacion debes ejecutar primero para que el turno sea auditable?",
+    correctOptionId: "open-shift",
+    options: [
+      { id: "open-shift", label: "Abrir turno AM con responsable, hora y caja inicial." },
+      { id: "sell-first", label: "Tomar pedidos antes de registrar caja inicial." },
+      { id: "skip-cash", label: "Usar la caja del turno anterior sin apertura." },
+    ],
+    practiceTitle: "Apertura de turno",
+    practiceDescription:
+      "Registra la apertura virtual del turno. La prueba solo avanza si el turno queda con hora, caja y responsable correctos.",
+    fields: [
+      {
+        id: "turnStart",
+        label: "Hora de apertura",
+        type: "select",
+        correctValue: "09:00",
+        options: [
+          { value: "08:30", label: "08:30" },
+          { value: "09:00", label: "09:00" },
+          { value: "11:00", label: "11:00" },
+        ],
+      },
+      {
+        id: "openingCash",
+        label: "Caja inicial",
+        type: "number",
+        correctValue: "120000",
+        placeholder: "120000",
+      },
+      {
+        id: "responsible",
+        label: "Responsable",
+        type: "select",
+        correctValue: "Paula Contreras",
+        options: [
+          { value: "Paula Contreras", label: "Paula Contreras" },
+          { value: "Valentina Reyes", label: "Valentina Reyes" },
+          { value: "Daniel Vega", label: "Daniel Vega" },
+        ],
+      },
+    ],
+  },
+  "briefing-reservations": {
+    question:
+      "Que debe revisar salon antes de recibir una reserva con restriccion alimentaria?",
+    correctOptionId: "review-reservation",
+    options: [
+      { id: "review-reservation", label: "Mesa, hora, cantidad de personas y alergia declarada." },
+      { id: "only-table", label: "Solo revisar si hay una mesa libre." },
+      { id: "wait-arrival", label: "Esperar a que llegue el cliente para recien leer la reserva." },
+    ],
+    practiceTitle: "Reservas del turno",
+    practiceDescription:
+      "Confirma la reserva critica que condiciona salon y cocina.",
+    fields: [
+      {
+        id: "customer",
+        label: "Cliente",
+        type: "select",
+        correctValue: "Carolina Munoz",
+        options: [
+          { value: "Carolina Munoz", label: "Carolina Munoz" },
+          { value: "Andres Salinas", label: "Andres Salinas" },
+          { value: "Matias Vergara", label: "Matias Vergara" },
+        ],
+      },
+      {
+        id: "reservationTime",
+        label: "Hora reserva",
+        type: "select",
+        correctValue: "20:30",
+        options: [
+          { value: "13:45", label: "13:45" },
+          { value: "20:30", label: "20:30" },
+          { value: "21:00", label: "21:00" },
+        ],
+      },
+      {
+        id: "partySize",
+        label: "Comensales",
+        type: "number",
+        correctValue: "6",
+        placeholder: "6",
+      },
+      {
+        id: "allergy",
+        label: "Alergia",
+        type: "select",
+        correctValue: "Lacteos",
+        options: [
+          { value: "Lacteos", label: "Lacteos" },
+          { value: "Mariscos", label: "Mariscos" },
+          { value: "Sin alergias", label: "Sin alergias" },
+        ],
+      },
+    ],
+  },
+  "briefing-employees": {
+    question:
+      "Como se debe organizar el equipo para que cada accion quede asociada a un rol?",
+    correctOptionId: "assign-roles",
+    options: [
+      { id: "assign-roles", label: "Asignar mesero, cajero y bodega antes del servicio." },
+      { id: "all-admin", label: "Dejar que administracion ejecute todos los procesos." },
+      { id: "no-roles", label: "Trabajar sin roles para avanzar mas rapido." },
+    ],
+    practiceTitle: "Asignacion de equipo",
+    practiceDescription:
+      "Selecciona los responsables correctos del servicio de prueba.",
+    fields: [
+      {
+        id: "waiter",
+        label: "Mesero",
+        type: "select",
+        correctValue: "Valentina Reyes",
+        options: [
+          { value: "Valentina Reyes", label: "Valentina Reyes" },
+          { value: "Felipe Araya", label: "Felipe Araya" },
+          { value: "Daniel Vega", label: "Daniel Vega" },
+        ],
+      },
+      {
+        id: "cashier",
+        label: "Cajero",
+        type: "select",
+        correctValue: "Felipe Araya",
+        options: [
+          { value: "Felipe Araya", label: "Felipe Araya" },
+          { value: "Rodrigo Fuentes", label: "Rodrigo Fuentes" },
+          { value: "Camila Soto", label: "Camila Soto" },
+        ],
+      },
+      {
+        id: "warehouse",
+        label: "Bodega",
+        type: "select",
+        correctValue: "Daniel Vega",
+        options: [
+          { value: "Daniel Vega", label: "Daniel Vega" },
+          { value: "Paula Contreras", label: "Paula Contreras" },
+          { value: "Valentina Reyes", label: "Valentina Reyes" },
+        ],
+      },
+    ],
+  },
+  "briefing-suppliers": {
+    question:
+      "Antes de abrir puertas, que revision evita partir el turno sin abastecimiento critico?",
+    correctOptionId: "check-critical-supplier",
+    options: [
+      { id: "check-critical-supplier", label: "Revisar proveedor critico, documento recibido y confiabilidad." },
+      { id: "ignore-supplier", label: "Esperar a que bodega avise durante el servicio." },
+      { id: "only-phone", label: "Llamar al proveedor sin registrar estado documental." },
+    ],
+    practiceTitle: "Chequeo de proveedor",
+    practiceDescription:
+      "Valida el proveedor principal del caso antes de iniciar la operacion.",
+    fields: [
+      {
+        id: "supplier",
+        label: "Proveedor critico",
+        type: "select",
+        correctValue: "Carnes Andinas",
+        options: [
+          { value: "Carnes Andinas", label: "Carnes Andinas" },
+          { value: "Huerta Local", label: "Huerta Local" },
+          { value: "Secos del Sur", label: "Secos del Sur" },
+        ],
+      },
+      {
+        id: "documentStatus",
+        label: "Estado documento",
+        type: "select",
+        correctValue: "received",
+        options: [
+          { value: "pending", label: "Pendiente" },
+          { value: "received", label: "Recepcionado" },
+          { value: "cancelled", label: "Cancelado" },
+        ],
+      },
+      {
+        id: "reliability",
+        label: "Confiabilidad",
+        type: "number",
+        correctValue: "96",
+        placeholder: "96",
+      },
+    ],
+  },
+  "briefing-stations": {
+    question:
+      "Que debe quedar listo para que comandas y comprobantes lleguen a cada area?",
+    correctOptionId: "prepare-printing",
+    options: [
+      { id: "prepare-printing", label: "Validar estacion, impresora y autoimpresion de cocina." },
+      { id: "single-printer", label: "Usar una sola impresora para todo el restaurante." },
+      { id: "manual-notes", label: "Reemplazar comandas por notas manuales sin folio." },
+    ],
+    practiceTitle: "Estaciones de impresion",
+    practiceDescription:
+      "Prepara la estacion caliente que recibira la primera comanda.",
+    fields: [
+      {
+        id: "stationName",
+        label: "Estacion",
+        type: "select",
+        correctValue: "Cocina caliente",
+        options: [
+          { value: "Cocina caliente", label: "Cocina caliente" },
+          { value: "Caja", label: "Caja" },
+          { value: "Bodega", label: "Bodega" },
+        ],
+      },
+      {
+        id: "printerName",
+        label: "Impresora",
+        type: "select",
+        correctValue: "EPSON-Cocina-01",
+        options: [
+          { value: "EPSON-Cocina-01", label: "EPSON-Cocina-01" },
+          { value: "EPSON-Caja-01", label: "EPSON-Caja-01" },
+          { value: "Sin impresora", label: "Sin impresora" },
+        ],
+      },
+      {
+        id: "autoPrint",
+        label: "Autoimpresion",
+        type: "select",
+        correctValue: "true",
+        options: [
+          { value: "true", label: "Activa" },
+          { value: "false", label: "Inactiva" },
+          { value: "manual", label: "Manual sin control" },
+        ],
+      },
+    ],
+  },
+  "arrival-crm": {
+    question:
+      "Llega Carolina Munoz con reserva y alergia. Que debe revisar el estudiante antes de sentarla?",
+    correctOptionId: "check-allergy",
+    options: [
+      { id: "check-allergy", label: "Ficha, alergias, preferencias y reserva asociada." },
+      { id: "only-name", label: "Solo el nombre de la reserva." },
+      { id: "skip-crm", label: "Saltarse CRM porque ya hay una mesa reservada." },
+    ],
+    practiceTitle: "Revision CRM",
+    practiceDescription:
+      "Completa la ficha de llegada y cambia la reserva a sentada.",
+    fields: [
+      {
+        id: "customer",
+        label: "Cliente",
+        type: "select",
+        correctValue: "Carolina Munoz",
+        options: [
+          { value: "Carolina Munoz", label: "Carolina Munoz" },
+          { value: "Andres Salinas", label: "Andres Salinas" },
+          { value: "Matias Vergara", label: "Matias Vergara" },
+        ],
+      },
+      {
+        id: "allergy",
+        label: "Alergia declarada",
+        type: "select",
+        correctValue: "Lacteos",
+        options: [
+          { value: "Mariscos", label: "Mariscos" },
+          { value: "Lacteos", label: "Lacteos" },
+          { value: "Sin alergias", label: "Sin alergias" },
+        ],
+      },
+      {
+        id: "reservationStatus",
+        label: "Estado de reserva",
+        type: "select",
+        correctValue: "seated",
+        options: [
+          { value: "confirmed", label: "Confirmada" },
+          { value: "seated", label: "Sentada" },
+          { value: "cancelled", label: "Cancelada" },
+        ],
+      },
+    ],
+  },
+  "arrival-table": {
+    question: "Que accion abre correctamente la atencion presencial de la mesa?",
+    correctOptionId: "open-reserved",
+    options: [
+      { id: "open-random", label: "Tomar cualquier mesa libre sin revisar reserva." },
+      { id: "open-reserved", label: "Tomar la mesa reservada y cambiarla a ocupada." },
+      { id: "leave-free", label: "Mantener la mesa libre hasta que llegue cocina." },
+    ],
+    practiceTitle: "Apertura de mesa",
+    practiceDescription:
+      "Selecciona la mesa de la reserva y dejala ocupada para abrir cuenta.",
+    fields: [
+      {
+        id: "tableNumber",
+        label: "Mesa",
+        type: "number",
+        correctValue: "3",
+        placeholder: "3",
+      },
+      {
+        id: "tableStatus",
+        label: "Estado",
+        type: "select",
+        correctValue: "occupied",
+        options: [
+          { value: "reserved", label: "Reservada" },
+          { value: "occupied", label: "Ocupada" },
+          { value: "free", label: "Libre" },
+        ],
+      },
+      {
+        id: "zone",
+        label: "Zona",
+        type: "select",
+        correctValue: "Salon",
+        options: [
+          { value: "Terraza", label: "Terraza" },
+          { value: "Salon", label: "Salon" },
+          { value: "Barra", label: "Barra" },
+        ],
+      },
+    ],
+  },
+  "arrival-order": {
+    question: "Despues de ocupar la mesa, que se debe crear para tomar consumos?",
+    correctOptionId: "create-order",
+    options: [
+      { id: "create-order", label: "Abrir pedido asociado a mesa y mesero." },
+      { id: "wait-payment", label: "Esperar el pago para recien crear pedido." },
+      { id: "only-note", label: "Guardar una nota sin cuenta ni mesa." },
+    ],
+    practiceTitle: "Cuenta de mesa",
+    practiceDescription:
+      "Crea el pedido virtual asociado a la mesa de prueba.",
+    fields: [
+      {
+        id: "orderNumber",
+        label: "Numero de pedido",
+        type: "text",
+        correctValue: "PR-0001",
+        placeholder: "PR-0001",
+      },
+      {
+        id: "waiter",
+        label: "Mesero",
+        type: "select",
+        correctValue: "Valentina Reyes",
+        options: [
+          { value: "Valentina Reyes", label: "Valentina Reyes" },
+          { value: "Felipe Araya", label: "Felipe Araya" },
+          { value: "Paula Contreras", label: "Paula Contreras" },
+        ],
+      },
+      {
+        id: "orderStatus",
+        label: "Estado inicial",
+        type: "select",
+        correctValue: "pending",
+        options: [
+          { value: "pending", label: "Pendiente" },
+          { value: "paid", label: "Pagado" },
+          { value: "cancelled", label: "Cancelado" },
+        ],
+      },
+    ],
+  },
+  "arrival-allergy": {
+    question:
+      "La reserva declara alergia a lacteos. Que accion protege al cliente antes de pedir?",
+    correctOptionId: "notify-kitchen",
+    options: [
+      { id: "notify-kitchen", label: "Confirmar alergia y dejar alerta visible para cocina." },
+      { id: "ask-later", label: "Preguntar de nuevo solo cuando el plato este listo." },
+      { id: "hide-alert", label: "No registrar alergia para no retrasar la mesa." },
+    ],
+    practiceTitle: "Alerta alimentaria",
+    practiceDescription:
+      "Registra la alerta que debe ver cocina antes de producir.",
+    fields: [
+      {
+        id: "customer",
+        label: "Cliente",
+        type: "select",
+        correctValue: "Carolina Munoz",
+        options: [
+          { value: "Carolina Munoz", label: "Carolina Munoz" },
+          { value: "Andres Salinas", label: "Andres Salinas" },
+          { value: "Isidora Paredes", label: "Isidora Paredes" },
+        ],
+      },
+      {
+        id: "allergy",
+        label: "Alergia",
+        type: "select",
+        correctValue: "Lacteos",
+        options: [
+          { value: "Lacteos", label: "Lacteos" },
+          { value: "Mariscos", label: "Mariscos" },
+          { value: "Sin alergias", label: "Sin alergias" },
+        ],
+      },
+      {
+        id: "destination",
+        label: "Area informada",
+        type: "select",
+        correctValue: "Cocina caliente",
+        options: [
+          { value: "Cocina caliente", label: "Cocina caliente" },
+          { value: "Solo caja", label: "Solo caja" },
+          { value: "Sin informar", label: "Sin informar" },
+        ],
+      },
+    ],
+  },
+  "arrival-reservation-document": {
+    question:
+      "Que respaldo deja evidencia de la llegada, comensales y restricciones de la reserva?",
+    correctOptionId: "reservation-sheet",
+    options: [
+      { id: "reservation-sheet", label: "Ficha de reserva con mesa, hora, comensales y alergia." },
+      { id: "kitchen-ticket", label: "Comanda de cocina antes de elegir platos." },
+      { id: "cash-close", label: "Cierre de caja antes de atender la mesa." },
+    ],
+    practiceTitle: "Ficha de reserva",
+    practiceDescription:
+      "Genera el respaldo virtual de salon para la reserva de prueba.",
+    fields: [
+      {
+        id: "documentType",
+        label: "Tipo documento",
+        type: "select",
+        correctValue: "reservation_sheet",
+        options: [
+          { value: "reservation_sheet", label: "Ficha reserva" },
+          { value: "kitchen_ticket", label: "Comanda cocina" },
+          { value: "payment_receipt", label: "Comprobante pago" },
+        ],
+      },
+      {
+        id: "partySize",
+        label: "Comensales",
+        type: "number",
+        correctValue: "6",
+        placeholder: "6",
+      },
+      {
+        id: "reservationTime",
+        label: "Hora reserva",
+        type: "select",
+        correctValue: "20:30",
+        options: [
+          { value: "13:45", label: "13:45" },
+          { value: "20:30", label: "20:30" },
+          { value: "21:00", label: "21:00" },
+        ],
+      },
+    ],
+  },
+  "order-products": {
+    question: "Que validacion permite vender un producto sin afectar margen ni cocina?",
+    correctOptionId: "available-cost",
+    options: [
+      { id: "only-photo", label: "Que tenga una foto atractiva." },
+      { id: "available-cost", label: "Categoria, precio, disponibilidad y tiempo de preparacion." },
+      { id: "ignore-price", label: "Registrar producto sin precio y corregirlo al cierre." },
+    ],
+    practiceTitle: "Registro de producto",
+    practiceDescription:
+      "Da de alta el producto principal de la prueba con datos comerciales correctos.",
+    fields: [
+      {
+        id: "productName",
+        label: "Producto",
+        type: "select",
+        correctValue: "Lomo salteado",
+        options: [
+          { value: "Lomo salteado", label: "Lomo salteado" },
+          { value: "Jugo natural", label: "Jugo natural" },
+          { value: "Tabla caliente", label: "Tabla caliente" },
+        ],
+      },
+      {
+        id: "salePrice",
+        label: "Precio venta",
+        type: "number",
+        correctValue: "14900",
+        placeholder: "14900",
+      },
+      {
+        id: "prepTime",
+        label: "Tiempo de preparacion",
+        type: "number",
+        correctValue: "22",
+        placeholder: "22",
+      },
+    ],
+  },
+  "order-modifiers": {
+    question: "Como debe registrarse un pedido con modificadores y alergias?",
+    correctOptionId: "send-details",
+    options: [
+      { id: "send-details", label: "Con cantidades, modificadores y observaciones visibles." },
+      { id: "single-line", label: "Como una nota libre sin separar productos." },
+      { id: "verbal", label: "Solo avisando verbalmente a cocina." },
+    ],
+    practiceTitle: "Toma de pedido",
+    practiceDescription:
+      "Construye la cuenta con cantidades y observacion operacional.",
+    fields: [
+      {
+        id: "lomoQty",
+        label: "Lomo salteado",
+        type: "number",
+        correctValue: "2",
+        placeholder: "2",
+      },
+      {
+        id: "causaQty",
+        label: "Causa camaron palta",
+        type: "number",
+        correctValue: "1",
+        placeholder: "1",
+      },
+      {
+        id: "juiceQty",
+        label: "Jugo natural",
+        type: "number",
+        correctValue: "2",
+        placeholder: "2",
+      },
+      {
+        id: "modifier",
+        label: "Modificador critico",
+        type: "select",
+        correctValue: "Sin cebolla",
+        options: [
+          { value: "Sin cebolla", label: "Sin cebolla" },
+          { value: "Extra picante", label: "Extra picante" },
+          { value: "Sin registrar", label: "Sin registrar" },
+        ],
+      },
+    ],
+  },
+  "order-documents": {
+    question: "Que respaldo debe salir cuando el pedido ya tiene productos?",
+    correctOptionId: "kitchen-ticket",
+    options: [
+      { id: "kitchen-ticket", label: "Comanda por estacion con notas y cantidades." },
+      { id: "final-receipt", label: "Comprobante de pago antes de cocinar." },
+      { id: "no-document", label: "Ningun documento hasta cerrar caja." },
+    ],
+    practiceTitle: "Emision de comanda",
+    practiceDescription:
+      "Genera la comanda virtual que cocina debe recibir.",
+    fields: [
+      {
+        id: "documentType",
+        label: "Tipo documento",
+        type: "select",
+        correctValue: "kitchen_ticket",
+        options: [
+          { value: "kitchen_ticket", label: "Comanda cocina" },
+          { value: "payment_receipt", label: "Comprobante pago" },
+          { value: "cash_close", label: "Cierre caja" },
+        ],
+      },
+      {
+        id: "station",
+        label: "Estacion",
+        type: "select",
+        correctValue: "hot",
+        options: [
+          { value: "hot", label: "Cocina caliente" },
+          { value: "cash", label: "Caja" },
+          { value: "warehouse", label: "Bodega" },
+        ],
+      },
+      {
+        id: "documentNumber",
+        label: "Folio",
+        type: "text",
+        correctValue: "COC-1052",
+        placeholder: "COC-1052",
+      },
+    ],
+  },
+  "order-availability": {
+    question:
+      "Antes de confirmar el pedido, que dato evita vender algo sin respaldo de stock?",
+    correctOptionId: "check-stock",
+    options: [
+      { id: "check-stock", label: "Validar producto disponible y stock suficiente del insumo principal." },
+      { id: "sell-anyway", label: "Confirmar el pedido y resolver el stock despues." },
+      { id: "only-price", label: "Revisar solo el precio de venta." },
+    ],
+    practiceTitle: "Disponibilidad de carta",
+    practiceDescription:
+      "Comprueba producto, estado comercial y stock de materia prima.",
+    fields: [
+      {
+        id: "productName",
+        label: "Producto",
+        type: "select",
+        correctValue: "Lomo salteado",
+        options: [
+          { value: "Lomo salteado", label: "Lomo salteado" },
+          { value: "Tabla caliente", label: "Tabla caliente" },
+          { value: "Postre del dia", label: "Postre del dia" },
+        ],
+      },
+      {
+        id: "available",
+        label: "Disponibilidad",
+        type: "select",
+        correctValue: "true",
+        options: [
+          { value: "true", label: "Disponible" },
+          { value: "false", label: "No disponible" },
+          { value: "pending", label: "Sin validar" },
+        ],
+      },
+      {
+        id: "stock",
+        label: "Stock lomo",
+        type: "number",
+        correctValue: "7200",
+        placeholder: "7200",
+      },
+    ],
+  },
+  "order-stations": {
+    question:
+      "Como se reparte una cuenta con fondos, entrada fria y bebestibles?",
+    correctOptionId: "split-stations",
+    options: [
+      { id: "split-stations", label: "Separar por cocina caliente, cuarto frio y barra." },
+      { id: "all-hot", label: "Enviar todo a cocina caliente." },
+      { id: "cash-only", label: "Enviar la cuenta completa solo a caja." },
+    ],
+    practiceTitle: "Derivacion por estacion",
+    practiceDescription:
+      "Distribuye las lineas del pedido segun area productiva.",
+    fields: [
+      {
+        id: "hotItems",
+        label: "Cocina caliente",
+        type: "number",
+        correctValue: "2",
+        placeholder: "2",
+      },
+      {
+        id: "coldItems",
+        label: "Cuarto frio",
+        type: "number",
+        correctValue: "1",
+        placeholder: "1",
+      },
+      {
+        id: "barItems",
+        label: "Barra",
+        type: "number",
+        correctValue: "2",
+        placeholder: "2",
+      },
+    ],
+  },
+  "production-kitchen": {
+    question: "Cocina recibe la comanda. Que flujo asegura control de tiempos?",
+    correctOptionId: "progress-station",
+    options: [
+      { id: "progress-station", label: "Mover comanda por estacion hasta estado listo." },
+      { id: "mark-paid", label: "Marcar pagado para que desaparezca." },
+      { id: "ignore-time", label: "Esperar sin cambiar estado." },
+    ],
+    practiceTitle: "Gestion de comanda",
+    practiceDescription:
+      "Completa el paso de cocina y deja la comanda lista.",
+    fields: [
+      {
+        id: "station",
+        label: "Estacion",
+        type: "select",
+        correctValue: "hot",
+        options: [
+          { value: "hot", label: "Cocina caliente" },
+          { value: "bar", label: "Barra" },
+          { value: "cash", label: "Caja" },
+        ],
+      },
+      {
+        id: "kitchenStatus",
+        label: "Estado final",
+        type: "select",
+        correctValue: "ready",
+        options: [
+          { value: "pending", label: "Pendiente" },
+          { value: "preparing", label: "En preparacion" },
+          { value: "ready", label: "Listo" },
+        ],
+      },
+      {
+        id: "cook",
+        label: "Responsable cocina",
+        type: "select",
+        correctValue: "Rodrigo Fuentes",
+        options: [
+          { value: "Rodrigo Fuentes", label: "Rodrigo Fuentes" },
+          { value: "Felipe Araya", label: "Felipe Araya" },
+          { value: "Daniel Vega", label: "Daniel Vega" },
+        ],
+      },
+      {
+        id: "kitchenTime",
+        label: "Tiempo real",
+        type: "number",
+        correctValue: "18",
+        placeholder: "18",
+      },
+    ],
+  },
+  "production-recipes": {
+    question: "Que debe auditarse para saber si un producto es rentable y reproducible?",
+    correctOptionId: "audit-cost",
+    options: [
+      { id: "audit-cost", label: "Rendimiento, food cost, receta y margen." },
+      { id: "only-name", label: "Solo que el nombre coincida con la carta." },
+      { id: "only-photo", label: "Solo la foto del plato terminado." },
+    ],
+    practiceTitle: "Auditoria de producto",
+    practiceDescription:
+      "Audita el producto contra su receta tecnica y costo real.",
+    fields: [
+      {
+        id: "recipe",
+        label: "Receta",
+        type: "select",
+        correctValue: "Lomo salteado de la casa",
+        options: [
+          { value: "Lomo salteado de la casa", label: "Lomo salteado de la casa" },
+          { value: "Salmon grillado con crema citrica", label: "Salmon grillado con crema citrica" },
+          { value: "Causa fria de camaron y palta", label: "Causa fria de camaron y palta" },
+        ],
+      },
+      {
+        id: "yield",
+        label: "Rendimiento lomo",
+        type: "number",
+        correctValue: "70",
+        placeholder: "70",
+      },
+      {
+        id: "foodCost",
+        label: "Food cost",
+        type: "number",
+        correctValue: "31.4",
+        placeholder: "31.4",
+      },
+    ],
+  },
+  "production-safety": {
+    question: "Que control evita errores con alergias y cadena de frio?",
+    correctOptionId: "record-check",
+    options: [
+      { id: "record-check", label: "Registrar temperatura, alergeno y resultado conforme." },
+      { id: "only-look", label: "Mirar el producto sin dejar registro." },
+      { id: "after-service", label: "Controlar solo al final del servicio." },
+    ],
+    practiceTitle: "Control sanitario",
+    practiceDescription:
+      "Registra el control que respalda el servicio seguro.",
+    fields: [
+      {
+        id: "checkType",
+        label: "Tipo de control",
+        type: "select",
+        correctValue: "Alergenos y temperatura",
+        options: [
+          { value: "Alergenos y temperatura", label: "Alergenos y temperatura" },
+          { value: "Decoracion de plato", label: "Decoracion de plato" },
+          { value: "Propina sugerida", label: "Propina sugerida" },
+        ],
+      },
+      {
+        id: "temperature",
+        label: "Temperatura",
+        type: "number",
+        correctValue: "1.8",
+        placeholder: "1.8",
+      },
+      {
+        id: "result",
+        label: "Resultado",
+        type: "select",
+        correctValue: "ok",
+        options: [
+          { value: "ok", label: "Conforme" },
+          { value: "warning", label: "Advertencia" },
+          { value: "failed", label: "No conforme" },
+        ],
+      },
+    ],
+  },
+  "production-timing": {
+    question:
+      "Si el tiempo real esta dentro del objetivo, que debe hacer cocina con la comanda?",
+    correctOptionId: "mark-ready",
+    options: [
+      { id: "mark-ready", label: "Marcar lista y dejar tiempo real registrado." },
+      { id: "keep-pending", label: "Mantener pendiente aunque el plato este terminado." },
+      { id: "close-cash", label: "Cerrar caja desde cocina." },
+    ],
+    practiceTitle: "Control de tiempo",
+    practiceDescription:
+      "Contrasta tiempo objetivo y tiempo real antes de despachar.",
+    fields: [
+      {
+        id: "targetTime",
+        label: "Tiempo objetivo",
+        type: "number",
+        correctValue: "22",
+        placeholder: "22",
+      },
+      {
+        id: "realTime",
+        label: "Tiempo real",
+        type: "number",
+        correctValue: "18",
+        placeholder: "18",
+      },
+      {
+        id: "finalStatus",
+        label: "Estado final",
+        type: "select",
+        correctValue: "ready",
+        options: [
+          { value: "ready", label: "Listo" },
+          { value: "pending", label: "Pendiente" },
+          { value: "cancelled", label: "Cancelado" },
+        ],
+      },
+    ],
+  },
+  "production-waste": {
+    question:
+      "Durante produccion se detecta palta con madurez avanzada. Que registro corresponde?",
+    correctOptionId: "record-waste",
+    options: [
+      { id: "record-waste", label: "Registrar merma con insumo, cantidad, motivo y lote." },
+      { id: "discard-silent", label: "Botar el insumo sin anotarlo." },
+      { id: "charge-customer", label: "Cobrar la merma al cliente." },
+    ],
+    practiceTitle: "Merma de produccion",
+    practiceDescription:
+      "Registra la merma que afecta stock y costo.",
+    fields: [
+      {
+        id: "rawMaterial",
+        label: "Insumo",
+        type: "select",
+        correctValue: "Palta hass",
+        options: [
+          { value: "Palta hass", label: "Palta hass" },
+          { value: "Arroz grano largo", label: "Arroz grano largo" },
+          { value: "Harina panadera", label: "Harina panadera" },
+        ],
+      },
+      {
+        id: "movementType",
+        label: "Tipo movimiento",
+        type: "select",
+        correctValue: "waste",
+        options: [
+          { value: "waste", label: "Merma" },
+          { value: "purchase", label: "Compra" },
+          { value: "initial", label: "Inicial" },
+        ],
+      },
+      {
+        id: "quantity",
+        label: "Cantidad",
+        type: "number",
+        correctValue: "-320",
+        placeholder: "-320",
+      },
+      {
+        id: "reason",
+        label: "Motivo",
+        type: "select",
+        correctValue: "Madurez avanzada",
+        options: [
+          { value: "Madurez avanzada", label: "Madurez avanzada" },
+          { value: "Venta normal", label: "Venta normal" },
+          { value: "Sin motivo", label: "Sin motivo" },
+        ],
+      },
+    ],
+  },
+  "warehouse-inventory": {
+    question: "Al vender productos, que movimiento debe quedar trazado en bodega?",
+    correctOptionId: "stock-trace",
+    options: [
+      { id: "stock-trace", label: "Salida de insumo con lote, cantidad y metodo FIFO." },
+      { id: "delete-stock", label: "Borrar stock manualmente sin motivo." },
+      { id: "wait-month", label: "Ajustar inventario solo a fin de mes." },
+    ],
+    practiceTitle: "Movimiento de inventario",
+    practiceDescription:
+      "Registra la salida virtual asociada a la venta.",
+    fields: [
+      {
+        id: "rawMaterial",
+        label: "Insumo",
+        type: "select",
+        correctValue: "Lomo de vacuno",
+        options: [
+          { value: "Lomo de vacuno", label: "Lomo de vacuno" },
+          { value: "Harina panadera", label: "Harina panadera" },
+          { value: "Crema de leche", label: "Crema de leche" },
+        ],
+      },
+      {
+        id: "movementType",
+        label: "Tipo movimiento",
+        type: "select",
+        correctValue: "manual_out",
+        options: [
+          { value: "manual_out", label: "Salida manual" },
+          { value: "initial", label: "Inicial" },
+          { value: "purchase", label: "Compra" },
+        ],
+      },
+      {
+        id: "quantity",
+        label: "Cantidad",
+        type: "number",
+        correctValue: "-430",
+        placeholder: "-430",
+      },
+      {
+        id: "method",
+        label: "Metodo",
+        type: "select",
+        correctValue: "FIFO",
+        options: [
+          { value: "FIFO", label: "FIFO" },
+          { value: "LIFO", label: "LIFO" },
+          { value: "Sin metodo", label: "Sin metodo" },
+        ],
+      },
+    ],
+  },
+  "warehouse-purchases": {
+    question: "Que datos vuelven trazable una recepcion de compra?",
+    correctOptionId: "receive-lot",
+    options: [
+      { id: "receive-lot", label: "Proveedor, documento, cantidad, lote y vencimiento." },
+      { id: "amount-only", label: "Solo el monto total de la factura." },
+      { id: "supplier-only", label: "Solo el nombre del proveedor." },
+    ],
+    practiceTitle: "Recepcion de compra",
+    practiceDescription:
+      "Recepciona una compra virtual para recuperar stock.",
+    fields: [
+      {
+        id: "supplier",
+        label: "Proveedor",
+        type: "select",
+        correctValue: "Carnes Andinas",
+        options: [
+          { value: "Carnes Andinas", label: "Carnes Andinas" },
+          { value: "Costa Azul", label: "Costa Azul" },
+          { value: "Huerta Local", label: "Huerta Local" },
+        ],
+      },
+      {
+        id: "document",
+        label: "Documento",
+        type: "text",
+        correctValue: "F-PRUEBA-001",
+        placeholder: "F-PRUEBA-001",
+      },
+      {
+        id: "quantity",
+        label: "Cantidad recibida",
+        type: "number",
+        correctValue: "12000",
+        placeholder: "12000",
+      },
+      {
+        id: "lot",
+        label: "Lote",
+        type: "text",
+        correctValue: "CAR-0508-A",
+        placeholder: "CAR-0508-A",
+      },
+    ],
+  },
+  "warehouse-expiry": {
+    question:
+      "Si un insumo vence hoy, que accion operativa reduce riesgo y merma?",
+    correctOptionId: "prioritize-use",
+    options: [
+      { id: "prioritize-use", label: "Priorizar uso, rotular alerta y comunicar a cocina." },
+      { id: "ignore-date", label: "Ignorar vencimiento si aun hay stock." },
+      { id: "mix-lots", label: "Mezclar lotes para que no se note la fecha." },
+    ],
+    practiceTitle: "Control de vencimiento",
+    practiceDescription:
+      "Identifica el lote que debe usarse primero y la accion correcta.",
+    fields: [
+      {
+        id: "rawMaterial",
+        label: "Insumo",
+        type: "select",
+        correctValue: "Palta hass",
+        options: [
+          { value: "Palta hass", label: "Palta hass" },
+          { value: "Arroz grano largo", label: "Arroz grano largo" },
+          { value: "Harina panadera", label: "Harina panadera" },
+        ],
+      },
+      {
+        id: "expirationDate",
+        label: "Vencimiento",
+        type: "select",
+        correctValue: "2026-05-11",
+        options: [
+          { value: "2026-05-11", label: "2026-05-11" },
+          { value: "2026-08-20", label: "2026-08-20" },
+          { value: "2027-01-20", label: "2027-01-20" },
+        ],
+      },
+      {
+        id: "action",
+        label: "Accion",
+        type: "select",
+        correctValue: "Priorizar uso",
+        options: [
+          { value: "Priorizar uso", label: "Priorizar uso" },
+          { value: "Mezclar lotes", label: "Mezclar lotes" },
+          { value: "Sin accion", label: "Sin accion" },
+        ],
+      },
+    ],
+  },
+  "warehouse-supplier": {
+    question:
+      "Que proveedor requiere revision por documento valorizado y categoria sensible?",
+    correctOptionId: "review-seafood",
+    options: [
+      { id: "review-seafood", label: "Costa Azul por pescados y mariscos con documento valorizado." },
+      { id: "review-dry", label: "Secos del Sur por harina seca sin riesgo alto." },
+      { id: "review-produce", label: "Huerta Local solo por verduras de bajo riesgo." },
+    ],
+    practiceTitle: "Evaluacion de proveedor",
+    practiceDescription:
+      "Revisa confiabilidad y estado documental del proveedor sensible.",
+    fields: [
+      {
+        id: "supplier",
+        label: "Proveedor",
+        type: "select",
+        correctValue: "Costa Azul",
+        options: [
+          { value: "Costa Azul", label: "Costa Azul" },
+          { value: "Secos del Sur", label: "Secos del Sur" },
+          { value: "Huerta Local", label: "Huerta Local" },
+        ],
+      },
+      {
+        id: "reliability",
+        label: "Confiabilidad",
+        type: "number",
+        correctValue: "91",
+        placeholder: "91",
+      },
+      {
+        id: "documentStatus",
+        label: "Estado documento",
+        type: "select",
+        correctValue: "priced",
+        options: [
+          { value: "priced", label: "Valorizado" },
+          { value: "pending", label: "Pendiente" },
+          { value: "cancelled", label: "Cancelado" },
+        ],
+      },
+    ],
+  },
+  "warehouse-storage": {
+    question:
+      "Que condicion de almacenamiento corresponde para salmon fresco de alto riesgo?",
+    correctOptionId: "cold-chain",
+    options: [
+      { id: "cold-chain", label: "Mantener 0 a 2 C, FIFO y riesgo sanitario alto visible." },
+      { id: "ambient", label: "Guardar a temperatura ambiente seca." },
+      { id: "freeze-all", label: "Congelar todo sin registrar lote." },
+    ],
+    practiceTitle: "Almacenamiento critico",
+    practiceDescription:
+      "Valida condiciones del insumo de mayor riesgo sanitario.",
+    fields: [
+      {
+        id: "rawMaterial",
+        label: "Insumo",
+        type: "select",
+        correctValue: "Salmon fresco",
+        options: [
+          { value: "Salmon fresco", label: "Salmon fresco" },
+          { value: "Arroz grano largo", label: "Arroz grano largo" },
+          { value: "Cebolla morada", label: "Cebolla morada" },
+        ],
+      },
+      {
+        id: "temperature",
+        label: "Temperatura",
+        type: "select",
+        correctValue: "0 a 2 C",
+        options: [
+          { value: "0 a 2 C", label: "0 a 2 C" },
+          { value: "Ambiente seco", label: "Ambiente seco" },
+          { value: "8 a 12 C", label: "8 a 12 C" },
+        ],
+      },
+      {
+        id: "method",
+        label: "Metodo",
+        type: "select",
+        correctValue: "FIFO",
+        options: [
+          { value: "FIFO", label: "FIFO" },
+          { value: "LIFO", label: "LIFO" },
+          { value: "Sin metodo", label: "Sin metodo" },
+        ],
+      },
+      {
+        id: "risk",
+        label: "Riesgo sanitario",
+        type: "select",
+        correctValue: "high",
+        options: [
+          { value: "high", label: "Alto" },
+          { value: "medium", label: "Medio" },
+          { value: "low", label: "Bajo" },
+        ],
+      },
+    ],
+  },
+  "close-cash": {
+    question: "Que debe hacer caja cuando la mesa pide pagar?",
+    correctOptionId: "settle-close",
+    options: [
+      { id: "settle-close", label: "Registrar pago, propina y dejar caja cuadrada." },
+      { id: "print-only", label: "Solo imprimir pre-cuenta sin movimiento de caja." },
+      { id: "cash-only", label: "Aceptar solo efectivo aunque el cliente pague debito." },
+    ],
+    practiceTitle: "Cobro y cierre de caja",
+    practiceDescription:
+      "Cobra la cuenta y deja cerrado el movimiento del turno.",
+    fields: [
+      {
+        id: "paymentMethod",
+        label: "Medio de pago",
+        type: "select",
+        correctValue: "debit",
+        options: [
+          { value: "cash", label: "Efectivo" },
+          { value: "debit", label: "Debito" },
+          { value: "transfer", label: "Transferencia" },
+        ],
+      },
+      {
+        id: "amount",
+        label: "Monto cuenta",
+        type: "number",
+        correctValue: "42600",
+        placeholder: "42600",
+      },
+      {
+        id: "tip",
+        label: "Propina",
+        type: "number",
+        correctValue: "4260",
+        placeholder: "4260",
+      },
+      {
+        id: "cashStatus",
+        label: "Estado caja",
+        type: "select",
+        correctValue: "closed",
+        options: [
+          { value: "open", label: "Abierta" },
+          { value: "closed", label: "Cerrada" },
+          { value: "difference", label: "Con diferencia" },
+        ],
+      },
+    ],
+  },
+  "close-receipt": {
+    question: "Que documento respalda el pago frente al cliente y caja?",
+    correctOptionId: "receipt-proof",
+    options: [
+      { id: "receipt-proof", label: "Comprobante de pago asociado a la cuenta." },
+      { id: "kitchen-copy", label: "Una segunda copia de cocina." },
+      { id: "reservation-sheet", label: "La ficha de reserva original." },
+    ],
+    practiceTitle: "Comprobante de pago",
+    practiceDescription:
+      "Genera el respaldo virtual del pago.",
+    fields: [
+      {
+        id: "documentType",
+        label: "Tipo documento",
+        type: "select",
+        correctValue: "payment_receipt",
+        options: [
+          { value: "payment_receipt", label: "Comprobante pago" },
+          { value: "kitchen_ticket", label: "Comanda cocina" },
+          { value: "reservation_sheet", label: "Ficha reserva" },
+        ],
+      },
+      {
+        id: "documentNumber",
+        label: "Folio",
+        type: "text",
+        correctValue: "REC-872",
+        placeholder: "REC-872",
+      },
+      {
+        id: "orderNumber",
+        label: "Pedido",
+        type: "text",
+        correctValue: "PR-0001",
+        placeholder: "PR-0001",
+      },
+    ],
+  },
+  "close-reports": {
+    question: "Que revisa administracion para saber si el turno fue sano?",
+    correctOptionId: "interpret-kpi",
+    options: [
+      { id: "interpret-kpi", label: "Ventas, food cost, margen, compras y mermas." },
+      { id: "only-sales", label: "Solo venta total, sin costos." },
+      { id: "only-tips", label: "Solo propinas del turno." },
+    ],
+    practiceTitle: "Reporte del turno",
+    practiceDescription:
+      "Completa los indicadores de cierre que el docente puede revisar.",
+    fields: [
+      {
+        id: "sales",
+        label: "Venta prueba",
+        type: "number",
+        correctValue: "42600",
+        placeholder: "42600",
+      },
+      {
+        id: "foodCost",
+        label: "Food cost",
+        type: "number",
+        correctValue: "31.4",
+        placeholder: "31.4",
+      },
+      {
+        id: "margin",
+        label: "Margen esperado",
+        type: "number",
+        correctValue: "10280",
+        placeholder: "10280",
+      },
+    ],
+  },
+  "close-crm": {
+    question:
+      "Despues del pago, que registro ayuda a mejorar la proxima atencion del cliente?",
+    correctOptionId: "post-service-note",
+    options: [
+      { id: "post-service-note", label: "Registrar interaccion post-servicio con preferencia y responsable." },
+      { id: "delete-customer", label: "Borrar la ficha para evitar datos acumulados." },
+      { id: "only-total", label: "Guardar solo el total pagado." },
+    ],
+    practiceTitle: "Seguimiento CRM",
+    practiceDescription:
+      "Deja una evidencia de aprendizaje para futuras reservas.",
+    fields: [
+      {
+        id: "customer",
+        label: "Cliente",
+        type: "select",
+        correctValue: "Carolina Munoz",
+        options: [
+          { value: "Carolina Munoz", label: "Carolina Munoz" },
+          { value: "Matias Vergara", label: "Matias Vergara" },
+          { value: "Andres Salinas", label: "Andres Salinas" },
+        ],
+      },
+      {
+        id: "interactionType",
+        label: "Tipo interaccion",
+        type: "select",
+        correctValue: "message",
+        options: [
+          { value: "message", label: "Mensaje" },
+          { value: "complaint", label: "Reclamo" },
+          { value: "none", label: "Sin registro" },
+        ],
+      },
+      {
+        id: "responsible",
+        label: "Responsable",
+        type: "select",
+        correctValue: "Valentina Reyes",
+        options: [
+          { value: "Valentina Reyes", label: "Valentina Reyes" },
+          { value: "Daniel Vega", label: "Daniel Vega" },
+          { value: "Rodrigo Fuentes", label: "Rodrigo Fuentes" },
+        ],
+      },
+    ],
+  },
+  "close-audit": {
+    question: "Cuando termina el servicio, que valida que la prueba sea defendible?",
+    correctOptionId: "trace-complete",
+    options: [
+      { id: "trace-complete", label: "Bitacora con acciones, decisiones y evidencias." },
+      { id: "memory", label: "La memoria del estudiante sobre lo realizado." },
+      { id: "only-total", label: "Solo el total vendido." },
+    ],
+    practiceTitle: "Auditoria final",
+    practiceDescription:
+      "Cierra la prueba verificando eventos, estado y turno completo.",
+    fields: [
+      {
+        id: "events",
+        label: "Eventos esperados",
+        type: "number",
+        correctValue: "30",
+        placeholder: "30",
+      },
+      {
+        id: "proofStatus",
+        label: "Estado evidencia",
+        type: "select",
+        correctValue: "Comprobable",
+        options: [
+          { value: "Comprobable", label: "Comprobable" },
+          { value: "Sin respaldo", label: "Sin respaldo" },
+          { value: "Pendiente", label: "Pendiente" },
+        ],
+      },
+      {
+        id: "shiftStatus",
+        label: "Turno",
+        type: "select",
+        correctValue: "closed",
+        options: [
+          { value: "open", label: "Abierto" },
+          { value: "closed", label: "Cerrado" },
+          { value: "cancelled", label: "Cancelado" },
+        ],
+      },
+    ],
+  },
+};
+
+interface EducationProgressState {
+  completedActions: string[];
+  activePhaseIndex: number;
+  lastOutcome: string;
+  evidence: EducationEvidence[];
+  simulation: EducationSimulationState;
+  answers: Record<string, string>;
+  practiceValues: Record<string, Record<string, string>>;
+  attempts: Record<string, number>;
+}
+
+interface EducationEvidence {
+  id: string;
+  actionId: string;
+  title: string;
+  entityType: string;
+  entityId: string;
+  summary: string;
+  details: Array<{ label: string; value: string }>;
+  createdAt: string;
+}
+
+interface EducationSimulationState {
+  pruebaId: string;
+  shiftStatus: "pendiente" | "abierto" | "cerrado";
+  shiftOpenedAt: string;
+  tableNumber: number;
+  tableStatus: TableStatus;
+  customerName: string;
+  reservationStatus: ReservationStatus;
+  orderNumber: string;
+  orderStatus: OrderStatus;
+  orderItems: string[];
+  kitchenStatus: OrderStatus;
+  productRegistered: boolean;
+  productAudited: boolean;
+  inventoryMovements: number;
+  foodSafetyChecks: number;
+  purchaseReceived: boolean;
+  paymentStatus: "pendiente" | "pagado";
+  cashExpected: number;
+  documents: string[];
+  reportsReviewed: boolean;
+  auditEntries: number;
+}
+
+function createDefaultEducationSimulation(): EducationSimulationState {
+  return {
+    pruebaId: "PRUEBA-ACADEMIA-001",
+    shiftStatus: "pendiente",
+    shiftOpenedAt: "Sin abrir",
+    tableNumber: 3,
+    tableStatus: "reserved",
+    customerName: "Carolina Munoz",
+    reservationStatus: "confirmed",
+    orderNumber: "PR-0001",
+    orderStatus: "pending",
+    orderItems: [],
+    kitchenStatus: "pending",
+    productRegistered: false,
+    productAudited: false,
+    inventoryMovements: 0,
+    foodSafetyChecks: 0,
+    purchaseReceived: false,
+    paymentStatus: "pendiente",
+    cashExpected: 120000,
+    documents: [],
+    reportsReviewed: false,
+    auditEntries: 0,
+  };
+}
+
+function createDefaultEducationProgress(): EducationProgressState {
+  return {
+    completedActions: [],
+    activePhaseIndex: 0,
+    lastOutcome:
+      "Inicia el briefing. Cada paso requiere decision correcta y ejecucion practica.",
+    evidence: [],
+    simulation: createDefaultEducationSimulation(),
+    answers: {},
+    practiceValues: {},
+    attempts: {},
+  };
+}
+
+function getFirstPendingEducationPhaseIndex(completedActionSet: Set<string>) {
+  return educationPhases.findIndex((phase) =>
+    phase.actions.some((action) => !completedActionSet.has(action.id)),
   );
 }
 
-function ArchitectureModule() {
-  const stages = [
-    "Arquitectura general",
-    "Modelo de base de datos",
-    "Estructura del proyecto",
-    "Diseno UI/UX",
-    "Sistema de roles",
-    "Flujo de pedidos",
-    "Cocina en tiempo real",
-    "Caja",
-    "Inventario",
-    "Recetario tecnico",
-    "Costeo real",
-    "Reportes y dashboards",
-    "Seguridad alimentaria",
-    "Trabajadores",
-    "Auditoria",
-    "Clientes y reservas",
+function readStoredEducationProgress(): EducationProgressState {
+  if (typeof window === "undefined") {
+    return createDefaultEducationProgress();
+  }
+
+  try {
+    for (const legacyKey of EDUCATION_LEGACY_PROGRESS_KEYS) {
+      window.localStorage.removeItem(legacyKey);
+    }
+
+    const storedProgress = window.localStorage.getItem(EDUCATION_PROGRESS_KEY);
+
+    if (!storedProgress) {
+      return createDefaultEducationProgress();
+    }
+
+    const parsed = JSON.parse(storedProgress) as Partial<EducationProgressState>;
+    const defaultProgress = createDefaultEducationProgress();
+    const validActionIds = new Set(
+      educationPhases.flatMap((phase) => phase.actions.map((action) => action.id)),
+    );
+    const completedActions = (parsed.completedActions ?? []).filter((actionId) =>
+      validActionIds.has(actionId),
+    );
+    const completedActionSet = new Set(completedActions);
+    const firstPendingPhaseIndex = getFirstPendingEducationPhaseIndex(
+      completedActionSet,
+    );
+    const storedPhaseIndex = Math.min(
+      Math.max(parsed.activePhaseIndex ?? 0, 0),
+      educationPhases.length - 1,
+    );
+    const activePhaseIndex =
+      firstPendingPhaseIndex >= 0 &&
+      educationPhases[storedPhaseIndex]?.actions.every((action) =>
+        completedActionSet.has(action.id),
+      )
+        ? firstPendingPhaseIndex
+        : storedPhaseIndex;
+
+    return {
+      completedActions,
+      activePhaseIndex,
+      lastOutcome:
+        parsed.lastOutcome ??
+        "Prueba cargada. Continua desde la fase pendiente.",
+      evidence: parsed.evidence ?? defaultProgress.evidence,
+      simulation: {
+        ...defaultProgress.simulation,
+        ...(parsed.simulation ?? {}),
+        orderItems:
+          parsed.simulation?.orderItems ?? defaultProgress.simulation.orderItems,
+        documents:
+          parsed.simulation?.documents ?? defaultProgress.simulation.documents,
+      },
+      answers: parsed.answers ?? defaultProgress.answers,
+      practiceValues: parsed.practiceValues ?? defaultProgress.practiceValues,
+      attempts: parsed.attempts ?? defaultProgress.attempts,
+    };
+  } catch {
+    window.localStorage.removeItem(EDUCATION_PROGRESS_KEY);
+    return createDefaultEducationProgress();
+  }
+}
+
+function normalizeEducationValue(value: string) {
+  return value.trim().replace(",", ".").toLowerCase();
+}
+
+function isEducationFieldCorrect(field: EducationPracticeField, value: string) {
+  const normalizedValue = normalizeEducationValue(value);
+  const normalizedExpected = normalizeEducationValue(field.correctValue);
+
+  if (field.type === "number") {
+    return Number(normalizedValue) === Number(normalizedExpected);
+  }
+
+  return normalizedValue === normalizedExpected;
+}
+
+function formatEducationCaseValue(field: EducationPracticeField) {
+  const optionLabel =
+    field.options?.find((option) => option.value === field.correctValue)?.label ??
+    field.correctValue;
+
+  if (field.type !== "number") {
+    return optionLabel;
+  }
+
+  const numericValue = Number(normalizeEducationValue(field.correctValue));
+  const fieldKey = `${field.id} ${field.label}`.toLowerCase();
+
+  if (!Number.isFinite(numericValue)) {
+    return optionLabel;
+  }
+
+  if (
+    /(cash|amount|price|cost|total|subtotal|tip|monto|caja|precio|valor|venta|sales|margen|margin)/.test(
+      fieldKey,
+    )
+  ) {
+    return formatCurrency(numericValue);
+  }
+
+  if (/(percent|porcentaje|cargo|impuesto)/.test(fieldKey)) {
+    return `${numericValue}%`;
+  }
+
+  return optionLabel;
+}
+
+function validateEducationAction(
+  progress: EducationProgressState,
+  action: EducationAction,
+) {
+  const challenge = educationChallenges[action.id];
+
+  if (!challenge) {
+    return null;
+  }
+
+  const answer = progress.answers[action.id];
+
+  if (!answer) {
+    return "Selecciona una alternativa antes de validar la prueba.";
+  }
+
+  if (answer !== challenge.correctOptionId) {
+    return "La alternativa elegida no resuelve el escenario. Corrige la decision para avanzar.";
+  }
+
+  const values = progress.practiceValues[action.id] ?? {};
+
+  for (const field of challenge.fields) {
+    const value = values[field.id] ?? "";
+
+    if (!value.trim()) {
+      return `Completa el campo "${field.label}" para ejecutar la prueba.`;
+    }
+
+    if (!isEducationFieldCorrect(field, value)) {
+      return `Revisa "${field.label}": debe coincidir con el dato del caso (${formatEducationCaseValue(field)}).`;
+    }
+  }
+
+  return null;
+}
+
+function executeEducationAction(
+  current: EducationProgressState,
+  action: EducationAction,
+): EducationProgressState {
+  if (current.completedActions.includes(action.id)) {
+    return current;
+  }
+
+  const createdAt = new Date().toISOString();
+  const simulation: EducationSimulationState = {
+    ...current.simulation,
+    orderItems: [...current.simulation.orderItems],
+    documents: [...current.simulation.documents],
+    auditEntries: current.simulation.auditEntries + 1,
+  };
+  let entityType = "prueba";
+  let entityId = simulation.pruebaId;
+  const details: Array<{ label: string; value: string }> = [
+    { label: "Prueba", value: simulation.pruebaId },
+    { label: "Paso", value: action.label },
   ];
+  const challenge = educationChallenges[action.id];
+
+  if (challenge) {
+    const selectedOption = challenge.options.find(
+      (option) => option.id === current.answers[action.id],
+    );
+
+    if (selectedOption) {
+      details.push({ label: "Decision", value: selectedOption.label });
+    }
+
+    for (const field of challenge.fields) {
+      const value = current.practiceValues[action.id]?.[field.id];
+
+      if (value) {
+        const optionLabel =
+          field.options?.find((option) => option.value === value)?.label ?? value;
+        details.push({ label: field.label, value: optionLabel });
+      }
+    }
+  }
+
+  switch (action.id) {
+    case "briefing-dashboard":
+      simulation.shiftStatus = "abierto";
+      simulation.shiftOpenedAt = "09:00";
+      details.push(
+        { label: "Ventas iniciales", value: formatCurrency(157400) },
+        { label: "Mesas ocupadas", value: "4/12" },
+      );
+      break;
+    case "briefing-reservations":
+      entityType = "reserva";
+      entityId = "Carolina Munoz 20:30";
+      details.push(
+        { label: "Cliente", value: "Carolina Munoz" },
+        { label: "Comensales", value: "6" },
+        { label: "Alergia", value: "Lacteos" },
+      );
+      break;
+    case "briefing-employees":
+      details.push(
+        { label: "Mesero asignado", value: "Valentina Reyes" },
+        { label: "Caja", value: "Felipe Araya" },
+      );
+      break;
+    case "briefing-suppliers":
+      entityType = "proveedor";
+      entityId = "Carnes Andinas";
+      details.push(
+        { label: "Documento", value: "Recepcionado" },
+        { label: "Confiabilidad", value: "96" },
+      );
+      break;
+    case "briefing-stations":
+      entityType = "documento";
+      entityId = "Estaciones de impresion";
+      simulation.documents = addUniqueEducationValue(
+        simulation.documents,
+        "EST-IMP · Estaciones listas",
+      );
+      details.push(
+        { label: "Estacion", value: "Cocina caliente" },
+        { label: "Impresora", value: "EPSON-Cocina-01" },
+      );
+      break;
+    case "arrival-crm":
+      entityType = "cliente";
+      entityId = simulation.customerName;
+      simulation.reservationStatus = "seated";
+      details.push(
+        { label: "Cliente", value: simulation.customerName },
+        { label: "Alergia", value: "Lacteos" },
+      );
+      break;
+    case "arrival-table":
+      entityType = "mesa";
+      entityId = `Mesa ${simulation.tableNumber}`;
+      simulation.tableStatus = "occupied";
+      details.push(
+        { label: "Mesa", value: String(simulation.tableNumber) },
+        { label: "Estado", value: tableStatusMeta[simulation.tableStatus].label },
+      );
+      break;
+    case "arrival-order":
+      entityType = "pedido";
+      entityId = simulation.orderNumber;
+      simulation.orderStatus = "pending";
+      details.push(
+        { label: "Pedido", value: simulation.orderNumber },
+        { label: "Mesa", value: String(simulation.tableNumber) },
+      );
+      break;
+    case "arrival-allergy":
+      entityType = "seguridad alimentaria";
+      entityId = simulation.customerName;
+      simulation.foodSafetyChecks += 1;
+      details.push(
+        { label: "Alergia", value: "Lacteos" },
+        { label: "Area informada", value: "Cocina caliente" },
+      );
+      break;
+    case "arrival-reservation-document":
+      entityType = "documento";
+      entityId = "RES-126";
+      simulation.documents = addUniqueEducationValue(
+        simulation.documents,
+        "RES-126 · Ficha de reserva",
+      );
+      details.push(
+        { label: "Comensales", value: "6" },
+        { label: "Hora", value: "20:30" },
+      );
+      break;
+    case "order-products":
+      entityType = "producto";
+      entityId = "Carta prueba";
+      simulation.productRegistered = true;
+      details.push(
+        { label: "Producto disponible", value: "Lomo salteado" },
+        { label: "Tiempo", value: "22 min" },
+      );
+      break;
+    case "order-modifiers":
+      entityType = "pedido";
+      entityId = simulation.orderNumber;
+      simulation.orderItems = [
+        "2x Lomo salteado · Punto medio · Sin cebolla",
+        "1x Causa camaron palta · Sin palta",
+        "2x Jugo natural · Sin azucar",
+      ];
+      details.push(
+        { label: "Items", value: String(simulation.orderItems.length) },
+        { label: "Total parcial", value: formatCurrency(42600) },
+      );
+      break;
+    case "order-documents":
+      entityType = "documento";
+      entityId = "COC-1052";
+      simulation.documents = addUniqueEducationValue(
+        simulation.documents,
+        "COC-1052 · Comanda cocina",
+      );
+      details.push(
+        { label: "Documento", value: "COC-1052" },
+        { label: "Estacion", value: "Cocina caliente" },
+      );
+      break;
+    case "order-availability":
+      entityType = "inventario";
+      entityId = "Lomo de vacuno";
+      details.push(
+        { label: "Producto", value: "Lomo salteado" },
+        { label: "Stock", value: "7.200 g" },
+      );
+      break;
+    case "order-stations":
+      entityType = "comanda";
+      entityId = simulation.orderNumber;
+      details.push(
+        { label: "Caliente", value: "2 items" },
+        { label: "Frio", value: "1 item" },
+        { label: "Barra", value: "2 items" },
+      );
+      break;
+    case "production-kitchen":
+      entityType = "comanda";
+      entityId = "COC-1052";
+      simulation.kitchenStatus = "ready";
+      simulation.orderStatus = "ready";
+      details.push(
+        { label: "Comanda", value: "Lista" },
+        { label: "Tiempo cocina", value: "18 min" },
+      );
+      break;
+    case "production-recipes":
+      entityType = "receta";
+      entityId = "Lomo salteado de la casa";
+      simulation.productAudited = true;
+      details.push(
+        { label: "Food cost", value: "31,4%" },
+        { label: "Margen", value: formatCurrency(10280) },
+      );
+      break;
+    case "production-safety":
+      entityType = "seguridad alimentaria";
+      entityId = "Control prueba";
+      simulation.foodSafetyChecks += 1;
+      details.push(
+        { label: "Control", value: "Alergenos y temperatura" },
+        { label: "Resultado", value: "Conforme" },
+      );
+      break;
+    case "production-timing":
+      entityType = "comanda";
+      entityId = "COC-1052";
+      simulation.kitchenStatus = "ready";
+      details.push(
+        { label: "Objetivo", value: "22 min" },
+        { label: "Real", value: "18 min" },
+      );
+      break;
+    case "production-waste":
+      entityType = "inventario";
+      entityId = "Palta hass";
+      simulation.inventoryMovements += 1;
+      details.push(
+        { label: "Merma", value: "-320 g" },
+        { label: "Motivo", value: "Madurez avanzada" },
+      );
+      break;
+    case "warehouse-inventory":
+      entityType = "inventario";
+      entityId = "Lomo de vacuno";
+      simulation.inventoryMovements += 1;
+      details.push(
+        { label: "Movimiento", value: "Salida por venta" },
+        { label: "Cantidad", value: "-430 g" },
+      );
+      break;
+    case "warehouse-purchases":
+      entityType = "compra";
+      entityId = "F-PRUEBA-001";
+      simulation.purchaseReceived = true;
+      simulation.inventoryMovements += 1;
+      details.push(
+        { label: "Proveedor", value: "Carnes Andinas" },
+        { label: "Recepcion", value: "12.000 g" },
+      );
+      break;
+    case "warehouse-expiry":
+      entityType = "seguridad alimentaria";
+      entityId = "Palta hass";
+      simulation.foodSafetyChecks += 1;
+      details.push(
+        { label: "Vencimiento", value: "2026-05-11" },
+        { label: "Accion", value: "Priorizar uso" },
+      );
+      break;
+    case "warehouse-supplier":
+      entityType = "proveedor";
+      entityId = "Costa Azul";
+      details.push(
+        { label: "Confiabilidad", value: "91" },
+        { label: "Documento", value: "Valorizado" },
+      );
+      break;
+    case "warehouse-storage":
+      entityType = "inventario";
+      entityId = "Salmon fresco";
+      simulation.foodSafetyChecks += 1;
+      details.push(
+        { label: "Temperatura", value: "0 a 2 C" },
+        { label: "Metodo", value: "FIFO" },
+      );
+      break;
+    case "close-cash":
+      entityType = "caja";
+      entityId = "Caja AM";
+      simulation.paymentStatus = "pagado";
+      simulation.orderStatus = "paid";
+      simulation.tableStatus = "cleaning";
+      simulation.shiftStatus = "cerrado";
+      simulation.cashExpected += 42600;
+      details.push(
+        { label: "Pago", value: "Debito" },
+        { label: "Monto", value: formatCurrency(42600) },
+      );
+      break;
+    case "close-receipt":
+      entityType = "documento";
+      entityId = "REC-872";
+      simulation.documents = addUniqueEducationValue(
+        simulation.documents,
+        "REC-872 · Comprobante de pago",
+      );
+      details.push(
+        { label: "Documento", value: "REC-872" },
+        { label: "Cuenta", value: simulation.orderNumber },
+      );
+      break;
+    case "close-reports":
+      entityType = "reporte";
+      entityId = "Reporte turno prueba";
+      simulation.reportsReviewed = true;
+      details.push(
+        { label: "Venta prueba", value: formatCurrency(42600) },
+        { label: "Food cost", value: "31,4%" },
+      );
+      break;
+    case "close-crm":
+      entityType = "cliente";
+      entityId = simulation.customerName;
+      details.push(
+        { label: "Interaccion", value: "Mensaje post-servicio" },
+        { label: "Responsable", value: "Valentina Reyes" },
+      );
+      break;
+    case "close-audit":
+      entityType = "auditoria";
+      entityId = "Bitacora prueba";
+      details.push(
+        { label: "Eventos auditados", value: String(current.evidence.length + 1) },
+        { label: "Estado", value: "Comprobable" },
+      );
+      break;
+  }
+
+  const evidenceItem: EducationEvidence = {
+    id: `proof-${action.id}-${current.evidence.length + 1}`,
+    actionId: action.id,
+    title: action.label,
+    entityType,
+    entityId,
+    summary: action.outcome,
+    details,
+    createdAt,
+  };
+
+  return {
+    ...current,
+    completedActions: [...current.completedActions, action.id],
+    lastOutcome: action.outcome,
+    evidence: [evidenceItem, ...current.evidence],
+    simulation,
+  };
+}
+
+function addUniqueEducationValue(values: string[], value: string) {
+  return values.includes(value) ? values : [...values, value];
+}
+
+function EducationModule() {
+  const [educationProgress, setEducationProgress] = useState(
+    readStoredEducationProgress,
+  );
+  const {
+    completedActions,
+    activePhaseIndex,
+    lastOutcome,
+    evidence,
+    simulation,
+    answers,
+    practiceValues,
+    attempts,
+  } = educationProgress;
+  const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
+  const completedActionSet = useMemo(
+    () => new Set(completedActions),
+    [completedActions],
+  );
+  const totalActionCount = educationPhases.reduce(
+    (total, phase) => total + phase.actions.length,
+    0,
+  );
+  const completedCount = completedActions.length;
+  const progressPercent = Math.round((completedCount / totalActionCount) * 100);
+  const safePhaseIndex = Math.min(activePhaseIndex, educationPhases.length - 1);
+  const activePhase = educationPhases[safePhaseIndex];
+  const phaseCompletedCount = activePhase.actions.filter((action) =>
+    completedActionSet.has(action.id),
+  ).length;
+  const activePhaseComplete = activePhase.actions.every((action) =>
+    completedActionSet.has(action.id),
+  );
+  const tutorialComplete = completedCount === totalActionCount;
+  const firstPendingPhaseIndex = useMemo(
+    () => getFirstPendingEducationPhaseIndex(completedActionSet),
+    [completedActionSet],
+  );
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      EDUCATION_PROGRESS_KEY,
+      JSON.stringify(educationProgress),
+    );
+  }, [educationProgress]);
+
+  const updateAnswer = (actionId: string, optionId: string) => {
+    setActionErrors((current) => ({ ...current, [actionId]: "" }));
+    setEducationProgress((current) => ({
+      ...current,
+      answers: {
+        ...current.answers,
+        [actionId]: optionId,
+      },
+    }));
+  };
+
+  const updatePracticeValue = (
+    actionId: string,
+    fieldId: string,
+    value: string,
+  ) => {
+    setActionErrors((current) => ({ ...current, [actionId]: "" }));
+    setEducationProgress((current) => ({
+      ...current,
+      practiceValues: {
+        ...current.practiceValues,
+        [actionId]: {
+          ...(current.practiceValues[actionId] ?? {}),
+          [fieldId]: value,
+        },
+      },
+    }));
+  };
+
+  const completeAction = (action: EducationAction) => {
+    const validationError = validateEducationAction(educationProgress, action);
+
+    setEducationProgress((current) =>
+      validationError
+        ? {
+            ...current,
+            attempts: {
+              ...current.attempts,
+              [action.id]: (current.attempts[action.id] ?? 0) + 1,
+            },
+            lastOutcome: validationError,
+          }
+        : executeEducationAction(current, action),
+    );
+
+    setActionErrors((current) => ({
+      ...current,
+      [action.id]: validationError ?? "",
+    }));
+  };
+
+  const advancePhase = () => {
+    if (!activePhaseComplete) {
+      return;
+    }
+
+    setEducationProgress((current) => ({
+      ...current,
+      activePhaseIndex: Math.min(
+        current.activePhaseIndex + 1,
+        educationPhases.length - 1,
+      ),
+      lastOutcome: "Nueva fase desbloqueada. Continua el servicio.",
+    }));
+  };
+
+  const restartTutorial = () => {
+    setEducationProgress({
+      ...createDefaultEducationProgress(),
+      lastOutcome: "Prueba reiniciada. Comienza desde el briefing de turno.",
+    });
+    setActionErrors({});
+    window.localStorage.removeItem(EDUCATION_PROGRESS_KEY);
+  };
+
+  const jumpToPendingPhase = () => {
+    if (firstPendingPhaseIndex < 0) {
+      return;
+    }
+
+    setEducationProgress((current) => ({
+      ...current,
+      activePhaseIndex: firstPendingPhaseIndex,
+      lastOutcome:
+        "Fase pendiente cargada. Selecciona una alternativa y ejecuta la prueba.",
+    }));
+  };
 
   return (
     <div className="space-y-6">
       <SectionHeader
-        eyebrow="Base tecnica"
-        title="Arquitectura preparada para crecer por etapas"
-        description="Next.js App Router, Supabase como backend, datos demo desacoplados, permisos por rol y modulos listos para evolucionar a rutas independientes."
+        eyebrow="Juego academico"
+        title="Simulador evaluativo de atencion completa"
+        description="El estudiante debe decidir entre alternativas y ejecutar operaciones virtuales reales: abrir turno, abrir mesa, tomar pedido, registrar producto, cocina, bodega, caja, reportes y auditoria."
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Panel title="Frontend" icon={LayoutDashboard}>
-          <ArchitectureList
-            items={[
-              "Next.js 16 con App Router",
-              "Componentes modulares por area operativa",
-              "Tailwind CSS v4 con modo oscuro",
-              "Graficos de reportes con Recharts",
-              "UX responsive para desktop, tablet y movil",
-            ]}
+      <div className="rounded-lg border border-[var(--udla-orange)]/25 bg-[var(--udla-orange-soft)] p-5 text-[var(--udla-charcoal)] dark:border-[var(--udla-orange)]/40 dark:bg-[#241a16] dark:text-zinc-100">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase">Mision del estudiante</p>
+            <h2 className="mt-1 text-2xl font-semibold">
+              Completar la {simulation.pruebaId}
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 opacity-80">
+              Cada fase exige una respuesta correcta y una ejecucion practica.
+              Si la decision o los datos son incorrectos, la prueba no avanza y
+              el intento queda contado para revision docente.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:min-w-52">
+            <div className="rounded-lg bg-white/70 p-4 text-center shadow-sm dark:bg-black/20">
+              <p className="text-sm font-semibold uppercase">Progreso</p>
+              <p className="mt-1 text-4xl font-semibold">{progressPercent}%</p>
+            </div>
+            <button
+              type="button"
+              onClick={restartTutorial}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[var(--udla-orange)] px-3 text-sm font-semibold text-white transition hover:bg-[var(--udla-orange-dark)]"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Nueva prueba
+            </button>
+            {!tutorialComplete && firstPendingPhaseIndex >= 0 ? (
+              <button
+                type="button"
+                onClick={jumpToPendingPhase}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[var(--udla-orange)]/40 bg-white/80 px-3 text-sm font-semibold text-[var(--udla-charcoal)] transition hover:bg-white hover:text-[var(--udla-orange)] dark:bg-black/20 dark:text-zinc-100"
+              >
+                <GraduationCap className="h-4 w-4" />
+                Ir a fase pendiente
+              </button>
+            ) : null}
+          </div>
+        </div>
+        <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/80 dark:bg-black/30">
+          <div
+            className="h-full rounded-full bg-[var(--udla-orange)] transition-all"
+            style={{ width: `${progressPercent}%` }}
           />
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-4">
+        <MetricCard
+          label="Fase actual"
+          value={`${safePhaseIndex + 1}/${educationPhases.length}`}
+          icon={GraduationCap}
+          tone="bg-[var(--udla-orange)]"
+        />
+        <MetricCard
+          label="Pruebas aprobadas"
+          value={`${completedCount}/${totalActionCount}`}
+          icon={ListChecks}
+          tone="bg-emerald-600"
+        />
+        <MetricCard
+          label="Funciones comprobadas"
+          value={`${countCompletedEducationModules(completedActionSet)}/${educationCoverageModules.length}`}
+          icon={LayoutDashboard}
+          tone="bg-[var(--udla-charcoal)]"
+        />
+        <MetricCard
+          label="Estado"
+          value={tutorialComplete ? "Terminado" : "En curso"}
+          icon={Activity}
+          tone={tutorialComplete ? "bg-emerald-600" : "bg-amber-600"}
+        />
+      </div>
+
+      <Panel title={`Estado de la prueba ${simulation.pruebaId}`} icon={ClipboardCheck}>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <InfoPill
+            label="Turno"
+            value={`${simulation.shiftStatus} · ${simulation.shiftOpenedAt}`}
+          />
+          <InfoPill
+            label="Mesa"
+            value={`Mesa ${simulation.tableNumber} · ${tableStatusMeta[simulation.tableStatus].label}`}
+          />
+          <InfoPill
+            label="Cliente"
+            value={`${simulation.customerName} · ${reservationStatusMeta[simulation.reservationStatus].label}`}
+          />
+          <InfoPill
+            label="Pedido"
+            value={`${simulation.orderNumber} · ${orderStatusMeta[simulation.orderStatus].label}`}
+          />
+          <InfoPill
+            label="Cocina"
+            value={orderStatusMeta[simulation.kitchenStatus].label}
+          />
+          <InfoPill
+            label="Producto"
+            value={simulation.productRegistered ? "Registrado" : "Pendiente"}
+          />
+          <InfoPill
+            label="Auditoria producto"
+            value={simulation.productAudited ? "Aprobada" : "Pendiente"}
+          />
+          <InfoPill
+            label="Inventario"
+            value={`${simulation.inventoryMovements} movimientos`}
+          />
+          <InfoPill
+            label="Seguridad"
+            value={`${simulation.foodSafetyChecks} controles`}
+          />
+          <InfoPill
+            label="Caja"
+            value={`${simulation.paymentStatus} · ${formatCurrency(simulation.cashExpected)}`}
+          />
+          <InfoPill
+            label="Comprobantes"
+            value={`${simulation.documents.length} documentos · ${evidence.length} evidencias`}
+          />
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
+            <p className="text-xs font-semibold uppercase text-zinc-500">
+              Pedido de prueba
+            </p>
+            <div className="mt-2 space-y-2 text-sm">
+              {simulation.orderItems.length ? (
+                simulation.orderItems.map((item) => (
+                  <p key={item} className="font-medium">
+                    {item}
+                  </p>
+                ))
+              ) : (
+                <p className="text-zinc-500">Aun sin productos registrados.</p>
+              )}
+            </div>
+          </div>
+          <div className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
+            <p className="text-xs font-semibold uppercase text-zinc-500">
+              Documentos generados
+            </p>
+            <div className="mt-2 space-y-2 text-sm">
+              {simulation.documents.length ? (
+                simulation.documents.map((document) => (
+                  <p key={document} className="font-medium">
+                    {document}
+                  </p>
+                ))
+              ) : (
+                <p className="text-zinc-500">Aun sin documentos.</p>
+              )}
+            </div>
+          </div>
+          <div className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
+            <p className="text-xs font-semibold uppercase text-zinc-500">
+              Validaciones
+            </p>
+            <div className="mt-2 space-y-2 text-sm font-medium">
+              <p>Compra: {simulation.purchaseReceived ? "Recepcionada" : "Pendiente"}</p>
+              <p>Reportes: {simulation.reportsReviewed ? "Revisados" : "Pendientes"}</p>
+              <p>Auditoria: {simulation.auditEntries} eventos</p>
+            </div>
+          </div>
+        </div>
+      </Panel>
+
+      {tutorialComplete ? (
+        <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-400/30 dark:bg-emerald-950/30 dark:text-emerald-100">
+          <p className="text-sm font-semibold uppercase">Prueba completada</p>
+          <h2 className="mt-1 text-3xl font-semibold">
+            Felicitaciones, completaste la prueba de atencion
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6">
+            Aprobaste decisiones y ejecuciones practicas sobre turno, mesa,
+            pedido, producto, cocina, receta, inventario, compras, seguridad
+            alimentaria, caja, documentos, reportes, auditoria, equipo y CRM. La bitacora de evidencias queda disponible en
+            esta misma pantalla.
+          </p>
+          <button
+            type="button"
+            onClick={restartTutorial}
+            className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-800"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Reiniciar prueba
+          </button>
+        </div>
+      ) : null}
+
+      <div className="space-y-4">
+        <Panel title="Fases del servicio" icon={GraduationCap}>
+          <div className="grid grid-flow-col auto-cols-[minmax(210px,1fr)] gap-3 overflow-x-auto pb-1 xl:grid-flow-row xl:grid-cols-6 xl:overflow-visible">
+            {educationPhases.map((phase, index) => {
+              const phaseDone = phase.actions.every((action) =>
+                completedActionSet.has(action.id),
+              );
+              const unlocked = index <= safePhaseIndex || tutorialComplete;
+              const active = index === safePhaseIndex;
+
+              return (
+                <button
+                  key={phase.id}
+                  type="button"
+                  disabled={!unlocked}
+                  onClick={() =>
+                    setEducationProgress((current) => ({
+                      ...current,
+                      activePhaseIndex: index,
+                    }))
+                  }
+                  className={`h-full min-h-[124px] w-full rounded-lg border p-3 text-left transition ${
+                    active
+                      ? "border-[var(--udla-orange)] bg-[var(--udla-orange-soft)] text-[var(--udla-charcoal)] dark:border-[var(--udla-orange)] dark:bg-[#241a16] dark:text-zinc-100"
+                      : "border-black/10 bg-zinc-50 hover:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-900"
+                  } ${!unlocked ? "cursor-not-allowed opacity-45" : ""}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold">
+                      Fase {index + 1}
+                    </span>
+                    {phaseDone ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-800">
+                        Lista
+                      </span>
+                    ) : unlocked ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+                        En curso
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-zinc-200 px-2 py-1 text-xs font-semibold text-zinc-600">
+                        Bloqueada
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 font-semibold">{phase.title}</p>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                    {
+                      phase.actions.filter((action) =>
+                        completedActionSet.has(action.id),
+                      ).length
+                    }
+                    /{phase.actions.length} acciones
+                  </p>
+                </button>
+              );
+            })}
+          </div>
         </Panel>
-        <Panel title="Backend Supabase" icon={Database}>
-          <ArchitectureList
-            items={[
-              "SQL en supabase/schema.sql",
-              "RLS por roles y permisos",
-              "Realtime para operaciones criticas",
-              "Vistas de costos, CRM y auditoria",
-              "Variables en .env.local",
-            ]}
-          />
-        </Panel>
-        <Panel title="Dominio gastronomico" icon={ChefHat}>
-          <ArchitectureList
-            items={[
-              "Recetas tecnicas con rendimiento",
-              "Costo real sobre neto aprovechable",
-              "Inventario con FIFO/LIFO y vencimientos",
-              "Caja con movimientos trazables",
-              "Clientes con preferencias y alergias",
-              "Modo educativo sin escritura en DB",
-            ]}
-          />
+
+        <Panel title={activePhase.title} icon={ClipboardCheck}>
+          <div className="rounded-lg border border-black/10 bg-zinc-50 p-4 dark:border-white/10 dark:bg-zinc-900">
+            <p className="text-sm font-semibold uppercase text-zinc-500">
+              Caso completo
+            </p>
+            <p className="mt-1 font-semibold">{activePhase.scene}</p>
+            <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+              {activePhase.caseNarrative}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+              Objetivo: {activePhase.goal}
+            </p>
+          </div>
+
+          <div className="mt-4 grid gap-3">
+            {activePhase.actions.map((action) => {
+              const done = completedActionSet.has(action.id);
+              const moduleMeta = modules.find(
+                (moduleItem) => moduleItem.id === action.moduleId,
+              );
+              const challenge = educationChallenges[action.id];
+              const selectedAnswer = answers[action.id] ?? "";
+              const actionPracticeValues = practiceValues[action.id] ?? {};
+              const actionError = actionErrors[action.id];
+              const attemptCount = attempts[action.id] ?? 0;
+
+              return (
+                <div
+                  key={action.id}
+                  className={`rounded-lg border p-4 ${
+                    done
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-400/30 dark:bg-emerald-950/30 dark:text-emerald-100"
+                      : "border-black/10 bg-white dark:border-white/10 dark:bg-zinc-950"
+                  }`}
+                >
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-zinc-500">
+                        {moduleMeta?.label ?? action.moduleId}
+                      </p>
+                      <h3 className="mt-1 text-lg font-semibold">{action.label}</h3>
+                      <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+                        {action.task}
+                      </p>
+                      {done ? (
+                        <p className="mt-2 text-sm font-semibold">
+                          Resultado: {action.outcome}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0">
+                      <button
+                        type="button"
+                        disabled={done}
+                        onClick={() => completeAction(action)}
+                        className={`inline-flex h-10 items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition ${
+                          done
+                            ? "cursor-default bg-emerald-600 text-white"
+                            : "bg-zinc-950 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950"
+                        }`}
+                      >
+                        <ListChecks className="h-4 w-4" />
+                        {done ? "Prueba aprobada" : "Validar prueba"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {challenge ? (
+                    <div className="mt-4 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+                      <div className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
+                        <p className="text-xs font-semibold uppercase text-zinc-500">
+                          Decision del estudiante
+                        </p>
+                        <p className="mt-2 text-sm font-semibold">
+                          {challenge.question}
+                        </p>
+                        <div className="mt-3 grid gap-2">
+                          {challenge.options.map((option) => {
+                            const selected = selectedAnswer === option.id;
+                            const approved =
+                              done && option.id === challenge.correctOptionId;
+
+                            return (
+                              <button
+                                key={option.id}
+                                type="button"
+                                disabled={done}
+                                onClick={() => updateAnswer(action.id, option.id)}
+                                className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                                  approved
+                                    ? "border-emerald-400 bg-emerald-100 text-emerald-950"
+                                    : selected
+                                      ? "border-[var(--udla-orange)] bg-[var(--udla-orange-soft)] text-[var(--udla-charcoal)] dark:border-[var(--udla-orange)] dark:bg-[#241a16] dark:text-zinc-100"
+                                      : "border-black/10 bg-white hover:border-[var(--udla-orange)] dark:border-white/10 dark:bg-zinc-950"
+                                } ${done ? "cursor-default" : ""}`}
+                              >
+                                {option.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
+                        <p className="text-xs font-semibold uppercase text-zinc-500">
+                          {challenge.practiceTitle}
+                        </p>
+                        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">
+                          {challenge.practiceDescription}
+                        </p>
+                        <div className="mt-3 grid gap-3 md:grid-cols-2">
+                          {challenge.fields.map((field) => {
+                            const value = actionPracticeValues[field.id] ?? "";
+
+                            return (
+                              <label
+                                key={field.id}
+                                className="grid gap-1 text-sm font-semibold"
+                              >
+                                {field.label}
+                                {field.type === "select" ? (
+                                  <select
+                                    aria-label={field.label}
+                                    value={value}
+                                    disabled={done}
+                                    onChange={(event) =>
+                                      updatePracticeValue(
+                                        action.id,
+                                        field.id,
+                                        event.target.value,
+                                      )
+                                    }
+                                    className="h-10 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-zinc-950 disabled:cursor-default disabled:opacity-80 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-100"
+                                  >
+                                    <option value="">Seleccionar</option>
+                                    {field.options?.map((option) => (
+                                      <option
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <input
+                                    aria-label={field.label}
+                                    type={field.type}
+                                    value={value}
+                                    disabled={done}
+                                    placeholder={field.placeholder}
+                                    onChange={(event) =>
+                                      updatePracticeValue(
+                                        action.id,
+                                        field.id,
+                                        event.target.value,
+                                      )
+                                    }
+                                    className="h-10 rounded-lg border border-black/10 bg-white px-3 text-sm font-medium text-zinc-950 disabled:cursor-default disabled:opacity-80 dark:border-white/10 dark:bg-zinc-950 dark:text-zinc-100"
+                                  />
+                                )}
+                                {field.helper ? (
+                                  <span className="text-xs font-normal text-zinc-500">
+                                    {field.helper}
+                                  </span>
+                                ) : null}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {actionError ? (
+                    <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-900 dark:border-red-400/30 dark:bg-red-950/30 dark:text-red-100">
+                      {actionError}
+                    </div>
+                  ) : null}
+
+                  {attemptCount ? (
+                    <p className="mt-2 text-xs font-semibold uppercase text-zinc-500">
+                      Intentos registrados: {attemptCount}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 rounded-lg border border-black/10 bg-zinc-50 p-4 dark:border-white/10 dark:bg-zinc-900">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase text-zinc-500">
+                  Avance de fase
+                </p>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                  {phaseCompletedCount}/{activePhase.actions.length} acciones
+                  aprobadas. Ultimo resultado: {lastOutcome}
+                </p>
+                {activePhaseComplete && !tutorialComplete ? (
+                    <p className="mt-2 text-sm font-semibold text-[var(--udla-orange)] dark:text-orange-300">
+                    Esta fase ya esta aprobada. Avanza para responder y ejecutar
+                    la siguiente fase pendiente.
+                  </p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                disabled={!activePhaseComplete || tutorialComplete}
+                onClick={advancePhase}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[var(--udla-orange)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--udla-orange-dark)] disabled:cursor-not-allowed disabled:bg-zinc-300 disabled:text-zinc-600"
+              >
+                <GraduationCap className="h-4 w-4" />
+                {safePhaseIndex === educationPhases.length - 1
+                  ? "Servicio completo"
+                  : "Ir a siguiente fase"}
+              </button>
+            </div>
+          </div>
         </Panel>
       </div>
 
-      <Panel title="Roadmap por etapas" icon={ListChecks}>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {stages.map((stage, index) => (
-            <div
-              key={stage}
-              className="rounded-lg border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-zinc-900"
-            >
-              <p className="text-sm font-semibold text-zinc-500">
-                Etapa {index + 1}
-              </p>
-              <p className="mt-1 font-semibold">{stage}</p>
+      <Panel title="Cobertura de funciones" icon={LayoutDashboard}>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {educationCoverageModules.map((moduleId) => {
+            const moduleActions = educationPhases.flatMap((phase) =>
+              phase.actions.filter((action) => action.moduleId === moduleId),
+            );
+            const moduleDone = moduleActions.every((action) =>
+              completedActionSet.has(action.id),
+            );
+            const moduleMeta = modules.find((moduleItem) => moduleItem.id === moduleId);
+
+            return (
+              <div
+                key={moduleId}
+                className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
+                  moduleDone
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                    : "border-black/10 bg-zinc-50 text-zinc-600 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300"
+                }`}
+              >
+                {moduleMeta?.shortLabel ?? moduleMeta?.label ?? moduleId}
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
+
+      <Panel title="Bitacora comprobable de la prueba" icon={ListChecks}>
+        <div className="space-y-3">
+          {evidence.length ? (
+            evidence.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-lg border border-black/10 bg-zinc-50 p-4 dark:border-white/10 dark:bg-zinc-900"
+              >
+                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase text-zinc-500">
+                      {item.entityType} · {item.entityId}
+                    </p>
+                    <h3 className="mt-1 font-semibold">{item.title}</h3>
+                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                      {item.summary}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-zinc-500">
+                    {formatDateTimeLabel(item.createdAt)}
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {item.details.map((detail, detailIndex) => (
+                    <div
+                      key={`${item.id}-${detail.label}-${detailIndex}`}
+                      className="rounded-md bg-white px-3 py-2 text-sm dark:bg-zinc-950"
+                    >
+                      <p className="text-xs font-semibold uppercase text-zinc-500">
+                        {detail.label}
+                      </p>
+                      <p className="mt-1 font-semibold">{detail.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="rounded-lg border border-dashed border-black/15 bg-zinc-50 p-4 text-sm text-zinc-500 dark:border-white/15 dark:bg-zinc-900">
+              Ejecuta el primer paso para generar evidencia comprobable.
             </div>
-          ))}
+          )}
         </div>
       </Panel>
     </div>
   );
+}
+
+function countCompletedEducationModules(completedActionSet: Set<string>) {
+  return educationCoverageModules.filter((moduleId) => {
+    const moduleActions = educationPhases.flatMap((phase) =>
+      phase.actions.filter((action) => action.moduleId === moduleId),
+    );
+
+    return moduleActions.every((action) => completedActionSet.has(action.id));
+  }).length;
 }
 
 function VisualOperationsStrip() {
@@ -7441,19 +11429,6 @@ function CostLine({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ArchitectureList({ items }: { items: string[] }) {
-  return (
-    <div className="space-y-3">
-      {items.map((item) => (
-        <div key={item} className="flex gap-3 text-sm leading-6">
-          <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-          <span>{item}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function SalesTrendChart() {
   const { reportPoints } = useRestaurantData();
   const maxSales = Math.max(1, ...reportPoints.map((point) => point.sales));
@@ -7538,7 +11513,7 @@ function SalesBarsChart({ reportPoints }: { reportPoints: ReportPoint[] }) {
         <div key={point.label} className="flex h-full flex-1 flex-col justify-end gap-2">
           <div className="flex flex-1 items-end gap-1">
             <span
-              className="w-1/2 rounded-t-md bg-cyan-600"
+              className="w-1/2 rounded-t-md bg-[var(--udla-charcoal)]"
               title={`Ventas ${formatCurrency(point.sales)}`}
               style={{ height: `${Math.max(8, (point.sales / maxSales) * 100)}%` }}
             />
@@ -7592,6 +11567,29 @@ function formatTime(createdAt: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(createdAt));
+}
+
+function formatDateTimeLabel(createdAt: string) {
+  return new Intl.DateTimeFormat("es-CL", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(createdAt));
+}
+
+function getSafeLogoUrl(logoUrl: string) {
+  const normalizedLogoUrl = logoUrl.trim();
+
+  if (!normalizedLogoUrl.startsWith("/")) {
+    return "/logo-original-udla.png";
+  }
+
+  if (normalizedLogoUrl === "/logo.png" || normalizedLogoUrl === "/logo-udla.svg") {
+    return "/logo-original-udla.png";
+  }
+
+  return normalizedLogoUrl;
 }
 
 function buildOperationalReports(snapshot: RestaurantSnapshot) {

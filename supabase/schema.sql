@@ -535,6 +535,26 @@ create table if not exists public.cash_movements (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.operational_documents (
+  id uuid primary key default gen_random_uuid(),
+  document_type text not null check (document_type in ('kitchen_ticket', 'table_prebill', 'payment_receipt', 'cash_close', 'reservation_sheet')),
+  title text not null default '',
+  order_id uuid references public.orders(id) on delete set null,
+  cash_register_id uuid references public.cash_registers(id) on delete set null,
+  reservation_id uuid references public.reservations(id) on delete set null,
+  payload jsonb not null default '{}'::jsonb,
+  printed_by uuid references public.employees(id) on delete set null,
+  printed_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+alter table public.operational_documents
+  drop constraint if exists operational_documents_title_not_blank;
+
+alter table public.operational_documents
+  add constraint operational_documents_title_not_blank
+  check (length(trim(title)) > 0);
+
 create table if not exists public.food_safety_logs (
   id uuid primary key default gen_random_uuid(),
   raw_material_id uuid references public.raw_materials(id) on delete set null,
@@ -621,6 +641,9 @@ create index if not exists idx_customers_phone on public.customers(phone);
 create index if not exists idx_reservations_date_status on public.reservations(reservation_date, status);
 create index if not exists idx_reservations_customer_id on public.reservations(customer_id);
 create index if not exists idx_customer_interactions_customer_id on public.customer_interactions(customer_id);
+create index if not exists idx_operational_documents_printed_at on public.operational_documents(printed_at desc);
+create index if not exists idx_operational_documents_order_id on public.operational_documents(order_id);
+create index if not exists idx_operational_documents_type on public.operational_documents(document_type);
 create index if not exists idx_audit_logs_created_at on public.audit_logs(created_at desc);
 create index if not exists idx_audit_logs_entity on public.audit_logs(entity_type, entity_id);
 create index if not exists idx_audit_logs_actor_id on public.audit_logs(actor_id);
@@ -901,6 +924,15 @@ select
   max(reservation_time) as last_reservation_time
 from public.reservations
 group by reservation_date, status, channel;
+
+create or replace view public.operational_document_report as
+select
+  date(printed_at) as print_date,
+  document_type,
+  count(*) as document_count,
+  max(printed_at) as last_printed_at
+from public.operational_documents
+group by date(printed_at), document_type;
 
 create or replace view public.audit_activity_report as
 select
@@ -1389,11 +1421,11 @@ grant execute on function public.receive_purchase_inventory(
 insert into public.roles (id, name, description, permissions)
 values
   ('administrator', 'Administrador', 'Control total del sistema', '["*"]'),
-  ('supervisor', 'Supervisor', 'Supervision operativa', '["dashboard:read","tables:manage","orders:manage","kitchen:manage","cash:manage","crm:manage","inventory:manage","reports:read","food-safety:manage","employees:manage","audit:read","education:read"]'),
-  ('cashier', 'Cajero', 'Caja y pagos', '["dashboard:read","orders:manage","cash:manage","crm:manage","reports:read","education:read"]'),
-  ('waiter', 'Mesero', 'Salon y pedidos', '["dashboard:read","tables:manage","orders:manage","crm:manage","education:read"]'),
-  ('cook', 'Cocinero', 'Comandas de cocina', '["dashboard:read","kitchen:manage","education:read"]'),
-  ('chef', 'Jefe de cocina', 'Recetas, cocina e inventario', '["dashboard:read","kitchen:manage","products:manage","recipes:manage","inventory:manage","food-safety:manage","reports:read","education:read"]'),
+  ('supervisor', 'Supervisor', 'Supervision operativa', '["dashboard:read","tables:manage","orders:manage","kitchen:manage","cash:manage","crm:manage","documents:manage","inventory:manage","reports:read","food-safety:manage","employees:manage","audit:read","settings:manage","education:read"]'),
+  ('cashier', 'Cajero', 'Caja y pagos', '["dashboard:read","orders:manage","cash:manage","crm:manage","documents:manage","reports:read","education:read"]'),
+  ('waiter', 'Mesero', 'Salon y pedidos', '["dashboard:read","tables:manage","orders:manage","crm:manage","documents:manage","education:read"]'),
+  ('cook', 'Cocinero', 'Comandas de cocina', '["dashboard:read","kitchen:manage","documents:manage","education:read"]'),
+  ('chef', 'Jefe de cocina', 'Recetas, cocina e inventario', '["dashboard:read","kitchen:manage","products:manage","recipes:manage","documents:manage","inventory:manage","food-safety:manage","reports:read","education:read"]'),
   ('warehouse', 'Encargado de bodega', 'Inventario, compras y seguridad', '["dashboard:read","inventory:manage","purchases:manage","food-safety:manage","reports:read","education:read"]')
 on conflict (id) do update
 set name = excluded.name,
@@ -1422,6 +1454,7 @@ begin
     'purchase_items',
     'cash_registers',
     'cash_movements',
+    'operational_documents',
     'food_safety_logs',
     'customers',
     'reservations',
@@ -1458,6 +1491,7 @@ begin
     'purchase_items',
     'cash_registers',
     'cash_movements',
+    'operational_documents',
     'food_safety_logs',
     'customers',
     'reservations',
@@ -1549,7 +1583,7 @@ begin
   end loop;
 
   roles_clause := '''administrator'', ''supervisor'', ''waiter'', ''cashier'', ''cook'', ''chef''';
-  foreach target_table in array array['orders', 'order_items', 'kitchen_tickets']
+  foreach target_table in array array['orders', 'order_items', 'kitchen_tickets', 'operational_documents']
   loop
     execute format('drop policy if exists "manager write" on public.%I', target_table);
     execute format('drop policy if exists "role write" on public.%I', target_table);
@@ -1654,9 +1688,11 @@ begin
     'inventory_movements',
     'food_safety_logs',
     'audit_logs',
+    'operational_documents',
     'customers',
     'reservations',
     'customer_interactions',
+    'settings',
     'cash_registers',
     'cash_movements',
     'purchases',

@@ -24,7 +24,7 @@ Esta primera etapa deja una base profesional para una plataforma gastronomica pr
 - `src/lib/costing.ts`: formulas de rendimiento, merma y costeo real.
 - `src/lib/supabase.ts`: cliente Supabase con inicializacion diferida.
 - `src/lib/data-source.ts`: lectura Supabase con fallback al dataset educativo.
-- `src/lib/realtime.ts`: suscripciones Supabase Realtime para mesas, trabajadores, pedidos, cocina, caja, compras, inventario, productos, recetario, seguridad alimentaria, auditoria, clientes y reservas.
+- `src/lib/realtime.ts`: suscripciones Supabase Realtime para mesas, trabajadores, pedidos, cocina, caja, compras, inventario, productos, recetario, seguridad alimentaria, auditoria, clientes, reservas, documentos operativos y configuracion.
 - `supabase/schema.sql`: modelo relacional base para produccion.
 - `supabase/seed.sql`: datos iniciales para pruebas academicas y comerciales.
 
@@ -46,6 +46,8 @@ Esta primera etapa deja una base profesional para una plataforma gastronomica pr
 14. Gestion avanzada de trabajadores.
 15. Auditoria transversal de acciones criticas.
 16. Clientes, reservas y CRM operativo.
+17. Impresion y documentos operativos.
+18. Configuracion institucional y parametros del local.
 
 ## Formula de costo real
 
@@ -83,7 +85,11 @@ Auditoria transversal ya registra acciones criticas en `audit_logs` mediante `re
 
 Clientes y reservas ya cuenta con fichas persistibles (`customers`), agenda por mesa y turno (`reservations`) y seguimientos CRM (`customer_interactions`). El modulo permite registrar preferencias, alergias, tags, historial de visitas, venta acumulada, no-shows, origen de reserva, responsable y contactos pendientes. Las reservas confirmadas pueden marcar mesas como reservadas, el canal realtime escucha cambios de CRM, y el SQL expone `customer_crm_report` y `reservation_daily_report` para tableros externos.
 
-La siguiente etapa recomendada es agregar impresion y documentos operativos: comandas imprimibles por estacion, pre-cuenta para mesa, comprobante de pago, cierre de caja imprimible y plantillas de documentos listas para integraciones tributarias o de pago.
+Impresion y documentos operativos ya cuenta con `operational_documents`, plantillas de comanda, pre-cuenta, comprobante de pago, cierre de caja y ficha de reserva. La UI genera una vista imprimible, registra historial, persiste metadata estructurada, deja auditoria `document.print` y escucha cambios realtime. El SQL expone `operational_document_report` para tableros externos.
+
+Configuracion institucional ya usa `settings` con la clave `restaurant_profile` para nombre comercial, razon social, RUT, contacto, moneda, locale, logo institucional (`/logo.png`), cargo de servicio, impuesto referencial, horarios, series de documentos, estaciones de impresion y zonas de salon. El modulo de configuracion permite editar estos valores, la cabecera y documentos imprimibles usan el logo de la academia, y cada guardado deja auditoria `settings.upsert`.
+
+La siguiente etapa recomendada es agregar multi-sucursal: sedes, bodegas por local, cajas por sede, usuarios asignados a sede y reportes comparativos entre locales.
 
 ## Politicas RLS del prototipo
 

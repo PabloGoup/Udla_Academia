@@ -21,6 +21,8 @@ const realtimeTables = [
   "customers",
   "reservations",
   "customer_interactions",
+  "operational_documents",
+  "settings",
 ] as const;
 
 export type RestaurantRealtimeStatus =

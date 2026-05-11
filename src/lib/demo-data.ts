@@ -8,6 +8,7 @@ import type {
   FoodSafetyLog,
   InventoryMovement,
   Order,
+  OperationalDocument,
   Product,
   ProductCategory,
   Purchase,
@@ -17,6 +18,7 @@ import type {
   Reservation,
   ReportPoint,
   RestaurantTable,
+  RestaurantSettings,
   Supplier,
 } from "@/lib/types";
 
@@ -1004,7 +1006,155 @@ export const customerInteractions: CustomerInteraction[] = [
   },
 ];
 
+export const operationalDocuments: OperationalDocument[] = [
+  {
+    id: "doc-1",
+    type: "kitchen_ticket",
+    title: "Comanda cocina A-1048",
+    orderId: "ord-1",
+    orderNumber: "A-1048",
+    payload: {
+      station: "hot",
+      table: 2,
+      items: ["2x Lomo salteado", "2x Jugo natural"],
+      notes: "Mesa apurada, enviar fondos juntos.",
+    },
+    printedBy: "Valentina Reyes",
+    printedAt: "2026-05-10T13:34:00-04:00",
+    createdAt: "2026-05-10T13:34:00-04:00",
+  },
+  {
+    id: "doc-2",
+    type: "table_prebill",
+    title: "Pre-cuenta mesa 7",
+    orderId: "ord-3",
+    orderNumber: "A-1050",
+    payload: {
+      table: 7,
+      subtotal: 57200,
+      tip: 5720,
+      total: 57200,
+      items: ["4x Causa camaron palta", "4x Jugo natural"],
+    },
+    printedBy: "Felipe Araya",
+    printedAt: "2026-05-10T13:55:00-04:00",
+    createdAt: "2026-05-10T13:55:00-04:00",
+  },
+  {
+    id: "doc-3",
+    type: "payment_receipt",
+    title: "Comprobante pago A-1050",
+    orderId: "ord-3",
+    orderNumber: "A-1050",
+    payload: {
+      paymentMethod: "debit",
+      amount: 57200,
+      tip: 5720,
+      cashier: "Felipe Araya",
+    },
+    printedBy: "Felipe Araya",
+    printedAt: "2026-05-10T13:59:00-04:00",
+    createdAt: "2026-05-10T13:59:00-04:00",
+  },
+  {
+    id: "doc-4",
+    type: "reservation_sheet",
+    title: "Ficha reserva Carolina Munoz",
+    reservationId: "res-1",
+    payload: {
+      customer: "Carolina Munoz",
+      table: 3,
+      time: "20:30",
+      partySize: 6,
+      allergies: ["Lacteos"],
+    },
+    printedBy: "Valentina Reyes",
+    printedAt: "2026-05-10T14:05:00-04:00",
+    createdAt: "2026-05-10T14:05:00-04:00",
+  },
+];
+
+export const restaurantSettings: RestaurantSettings = {
+  restaurantName: "UDLA Academia Gastronomica",
+  academyName: "Universidad de Las Americas",
+  legalName: "Academia Gastronomica UDLA",
+  taxId: "76.000.000-0",
+  address: "Campus Gastronomico UDLA, Santiago",
+  phone: "+56 2 2440 0000",
+  email: "academia.gastronomica@udla.cl",
+  currency: "CLP",
+  locale: "es-CL",
+  logoUrl: "/logo-original-udla.png",
+  serviceChargePercent: 10,
+  taxPercent: 19,
+  operatingHours: [
+    { day: "Lunes", open: "09:00", close: "18:00", enabled: true },
+    { day: "Martes", open: "09:00", close: "18:00", enabled: true },
+    { day: "Miercoles", open: "09:00", close: "18:00", enabled: true },
+    { day: "Jueves", open: "09:00", close: "18:00", enabled: true },
+    { day: "Viernes", open: "09:00", close: "20:00", enabled: true },
+    { day: "Sabado", open: "10:00", close: "16:00", enabled: true },
+    { day: "Domingo", open: "10:00", close: "16:00", enabled: false },
+  ],
+  documentSeries: [
+    { type: "kitchen_ticket", prefix: "COC", nextNumber: 1052, enabled: true },
+    { type: "table_prebill", prefix: "PRE", nextNumber: 318, enabled: true },
+    { type: "payment_receipt", prefix: "REC", nextNumber: 872, enabled: true },
+    { type: "cash_close", prefix: "CJA", nextNumber: 44, enabled: true },
+    { type: "reservation_sheet", prefix: "RES", nextNumber: 126, enabled: true },
+  ],
+  printStations: [
+    {
+      id: "ps-hot",
+      name: "Cocina caliente",
+      area: "hot",
+      printerName: "EPSON-Cocina-01",
+      autoPrint: true,
+    },
+    {
+      id: "ps-cold",
+      name: "Cuarto frio",
+      area: "cold",
+      printerName: "EPSON-Frio-01",
+      autoPrint: true,
+    },
+    {
+      id: "ps-bar",
+      name: "Barra",
+      area: "bar",
+      printerName: "EPSON-Barra-01",
+      autoPrint: true,
+    },
+    {
+      id: "ps-cash",
+      name: "Caja",
+      area: "cash",
+      printerName: "EPSON-Caja-01",
+      autoPrint: false,
+    },
+  ],
+  tableZones: [
+    { name: "Terraza", capacity: 12, color: "bg-emerald-500", active: true },
+    { name: "Salon", capacity: 24, color: "bg-amber-500", active: true },
+    { name: "Comedor", capacity: 20, color: "bg-cyan-500", active: true },
+    { name: "Barra", capacity: 8, color: "bg-fuchsia-500", active: true },
+  ],
+  updatedAt: "2026-05-10T14:20:00-04:00",
+};
+
 export const auditLogs: AuditLog[] = [
+  {
+    id: "aud-doc-1",
+    action: "document.print",
+    entityType: "operational_document",
+    entityId: "doc-2",
+    summary: "Pre-cuenta de mesa 7 registrada para impresion.",
+    actor: "Felipe Araya",
+    actorRole: "cashier",
+    metadata: { type: "table_prebill", orderNumber: "A-1050" },
+    time: "13:55",
+    createdAt: "2026-05-10T13:55:00-04:00",
+  },
   {
     id: "aud-0",
     action: "reservation.upsert",
@@ -1216,14 +1366,4 @@ export const reportPoints: ReportPoint[] = [
   { label: "Vie", sales: 1134000, foodCost: 352000, margin: 782000, orders: 106 },
   { label: "Sab", sales: 1286000, foodCost: 398000, margin: 888000, orders: 119 },
   { label: "Dom", sales: 972000, foodCost: 301000, margin: 671000, orders: 92 },
-];
-
-export const educationSteps = [
-  "Configurar roles y permisos antes de iniciar el turno.",
-  "Crear mesas, asignar mesero y abrir pedido presencial.",
-  "Agregar productos con modificadores y observaciones.",
-  "Enviar comanda a cocina y medir tiempos por estacion.",
-  "Cerrar cuenta con pago, propina, descuento y diferencia de caja.",
-  "Revisar salida automatica de inventario y mermas.",
-  "Comparar costo tecnico, precio sugerido y rentabilidad real.",
 ];
