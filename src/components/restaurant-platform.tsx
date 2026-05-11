@@ -2491,7 +2491,7 @@ function KitchenModule({
         description="La vista esta preparada para suscribirse a Supabase Realtime sobre orders y order_items."
       />
 
-      <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid grid-flow-col auto-cols-[minmax(240px,82vw)] gap-2 overflow-x-auto pb-2 md:grid-flow-row md:grid-cols-2 md:overflow-visible 2xl:grid-cols-3">
         {kitchenOrders.map((order) => {
           const next = orderStatusMeta[order.status].next;
           const elapsed = getElapsedMinutes(order.createdAt);
@@ -2499,71 +2499,74 @@ function KitchenModule({
           return (
             <div
               key={order.id}
-              className="rounded-lg border border-black/10 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#18191b]"
+              data-kitchen-card={order.id}
+              className="flex h-[310px] min-w-0 flex-col rounded-lg border border-black/10 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#18191b] sm:block sm:h-auto sm:p-4"
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-zinc-500">
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-zinc-500 sm:text-sm">
                     Pedido {order.number}
                   </p>
-                  <h3 className="text-2xl font-semibold">Mesa {order.tableNumber}</h3>
+                  <h3 className="text-xl font-semibold sm:text-2xl">
+                    Mesa {order.tableNumber}
+                  </h3>
                 </div>
                 <StatusBadge status={order.status} />
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+              <div className="mt-3 grid grid-cols-2 gap-1.5 text-sm sm:mt-4 sm:gap-2">
                 <InfoPill label="Ingreso" value={formatTime(order.createdAt)} />
                 <InfoPill label="Tiempo" value={`${elapsed} min`} />
               </div>
-              <div className="mt-4 space-y-3">
+              <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 sm:mt-4 sm:max-h-none sm:space-y-3 sm:overflow-visible sm:pr-0">
                 {order.items.map((item) => (
                   <div
                     key={item.id}
-                    className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900"
+                    className="rounded-lg border border-black/10 bg-zinc-50 p-2 dark:border-white/10 dark:bg-zinc-900 sm:p-3"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="font-semibold">
+                      <p className="truncate text-sm font-semibold sm:text-base">
                         {item.quantity}x {item.productName}
                       </p>
-                      <span className="rounded-md bg-zinc-900 px-2 py-1 text-xs font-semibold text-white dark:bg-white dark:text-zinc-950">
+                      <span className="shrink-0 rounded-md bg-zinc-900 px-2 py-1 text-[10px] font-semibold text-white dark:bg-white dark:text-zinc-950 sm:text-xs">
                         {item.station}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                    <p className="mt-1 truncate text-xs text-zinc-600 dark:text-zinc-300 sm:text-sm">
                       {item.modifiers.join(" · ")}
                     </p>
                     {item.notes ? (
-                      <p className="mt-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+                      <p className="mt-1 line-clamp-1 text-xs font-medium text-amber-700 dark:text-amber-300 sm:mt-2 sm:text-sm">
                         {item.notes}
                       </p>
                     ) : null}
                   </div>
                 ))}
               </div>
-              <div className="mt-4 grid grid-cols-3 gap-2">
+              <div className="mt-3 grid grid-cols-3 gap-1.5 sm:mt-4 sm:gap-2">
                 <button
                   type="button"
                   onClick={() => onUpdateStatus(order.id, "preparing")}
-                  className="h-11 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-700"
+                  className="h-9 rounded-lg bg-red-600 text-xs font-semibold text-white hover:bg-red-700 sm:h-11 sm:text-sm"
                 >
-                  Preparar
+                  Prep.
                 </button>
                 <button
                   type="button"
                   onClick={() => onUpdateStatus(order.id, "ready")}
-                  className="h-11 rounded-lg bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-700"
+                  className="h-9 rounded-lg bg-emerald-600 text-xs font-semibold text-white hover:bg-emerald-700 sm:h-11 sm:text-sm"
                 >
                   Listo
                 </button>
                 <button
                   type="button"
                   onClick={() => onUpdateStatus(order.id, "delivered")}
-                  className="h-11 rounded-lg bg-[var(--udla-charcoal)] text-sm font-semibold text-white hover:bg-[var(--udla-graphite)]"
+                  className="h-9 rounded-lg bg-[var(--udla-charcoal)] text-xs font-semibold text-white hover:bg-[var(--udla-graphite)] sm:h-11 sm:text-sm"
                 >
-                  Entregar
+                  Entrega
                 </button>
               </div>
               {next ? (
-                <p className="mt-3 text-center text-sm text-zinc-500">
+                <p className="mt-2 truncate text-center text-xs text-zinc-500 sm:mt-3 sm:text-sm">
                   Siguiente estado sugerido: {orderStatusMeta[next].label}
                 </p>
               ) : null}
@@ -2644,7 +2647,7 @@ function CashModule({
         description="Controla efectivo inicial, ventas por metodo, propinas, retiros, adelantos y diferencias de caja por turno."
       />
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
         <MetricCard
           label="Estado de caja"
           value={openRegister ? "Abierta" : "Cerrada"}
@@ -3087,7 +3090,7 @@ function ProductsModule({
         description="Administra productos de venta, precios, disponibilidad, receta asociada, tiempos de preparacion y opciones de personalizacion."
       />
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
         <MetricCard
           label="Productos"
           value={products.length.toString()}
@@ -3556,29 +3559,29 @@ function RecipesModule({
         description="Crea y ajusta recetas profesionales con ingredientes, rendimiento, merma, procedimiento, alergenos, food cost y precio sugerido."
       />
 
-      <div className="grid gap-4 xl:grid-cols-[340px_1fr]">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <Panel title="Recetas" icon={BookOpen}>
           <button
             type="button"
             onClick={startNewRecipe}
-            className="mb-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[var(--udla-orange)] px-4 text-sm font-semibold text-white transition hover:bg-[var(--udla-orange-dark)]"
+            className="mb-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[var(--udla-orange)] px-3 text-xs font-semibold text-white transition hover:bg-[var(--udla-orange-dark)] sm:h-11 sm:px-4 sm:text-sm"
           >
             <PackagePlus className="h-4 w-4" />
             Nueva receta
           </button>
-          <div className="max-h-[620px] space-y-2 overflow-auto pr-1">
+          <div className="max-h-[230px] space-y-1.5 overflow-auto pr-1 sm:max-h-[620px] sm:space-y-2">
             {recipes.map((recipe) => (
               <button
                 key={recipe.id}
                 type="button"
                 onClick={() => loadRecipe(recipe)}
-                className={`flex min-h-20 w-full items-center gap-3 rounded-lg border p-2 text-left transition ${
+                className={`flex min-h-14 w-full min-w-0 items-center gap-2 rounded-lg border p-1.5 text-left transition sm:min-h-20 sm:gap-3 sm:p-2 ${
                   selectedRecipeId === recipe.id
                     ? "border-[var(--udla-orange)] bg-[var(--udla-orange-soft)] dark:bg-[#241a16]"
                     : "border-black/10 bg-white hover:bg-zinc-50 dark:border-white/10 dark:bg-zinc-900"
                 }`}
               >
-                <span className="relative h-14 w-16 shrink-0 overflow-hidden rounded-md">
+                <span className="relative h-10 w-12 shrink-0 overflow-hidden rounded-md sm:h-14 sm:w-16">
                   <Image
                     src={recipe.image}
                     alt={recipe.name}
@@ -3588,20 +3591,24 @@ function RecipesModule({
                     className="object-cover"
                   />
                 </span>
-                <div>
-                  <p className="font-semibold">{recipe.name}</p>
-                  <p className="text-sm text-zinc-500">{recipe.category}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold sm:text-base">
+                    {recipe.name}
+                  </p>
+                  <p className="truncate text-xs text-zinc-500 sm:text-sm">
+                    {recipe.category}
+                  </p>
                 </div>
               </button>
             ))}
           </div>
         </Panel>
 
-        <div className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <div className="min-w-0 space-y-4">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
             <Panel title={selectedRecipe.name} icon={Calculator}>
-              <div className="grid gap-4 md:grid-cols-[240px_1fr]">
-                <div className="relative h-56 w-full overflow-hidden rounded-lg">
+              <div className="grid min-w-0 gap-3 md:grid-cols-[240px_1fr] md:gap-4">
+                <div className="relative h-28 w-full overflow-hidden rounded-lg sm:h-40 md:h-56">
                   <Image
                     src={selectedRecipe.image}
                     alt={selectedRecipe.name}
@@ -3611,17 +3618,17 @@ function RecipesModule({
                     className="object-cover"
                   />
                 </div>
-                <div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                <div className="min-w-0">
+                  <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
                     <InfoPill label="Porciones" value={selectedRecipe.portions.toString()} />
                     <InfoPill label="Tiempo" value={`${selectedRecipe.prepTimeMinutes} min`} />
                     <InfoPill label="Precio venta" value={formatCurrency(selectedRecipe.salePrice)} />
                     <InfoPill label="Food cost real" value={formatPercent(recipeSummary.foodCostPercent)} />
                   </div>
-                  <p className="mt-4 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
+                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-zinc-600 dark:text-zinc-300 sm:mt-4 sm:line-clamp-none">
                     {selectedRecipe.procedure}
                   </p>
-                  <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                  <p className="mt-2 line-clamp-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900 sm:mt-3 sm:line-clamp-none sm:p-3 sm:text-sm">
                     {selectedRecipe.observations}
                   </p>
                 </div>
@@ -4101,7 +4108,7 @@ function InventoryModule({
         description="Controla entradas, salidas por venta, ajustes, stock minimo, lotes, FIFO/LIFO y riesgo sanitario."
       />
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
         <MetricCard label="Materias primas" value={rawMaterials.length.toString()} icon={Boxes} tone="bg-orange-600" />
         <MetricCard label="Alertas stock" value={lowStock.length.toString()} icon={AlertTriangle} tone="bg-red-600" />
         <MetricCard label="Inventario valorizado" value={formatCurrency(inventoryValue)} icon={BadgeDollarSign} tone="bg-emerald-600" />
@@ -4361,7 +4368,7 @@ function PurchasesModule({
         description="Registra facturas, boletas, recepcion a inventario, comparacion de costos y confiabilidad por proveedor."
       />
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
         <MetricCard
           label="Compras registradas"
           value={purchases.length.toString()}
@@ -4840,7 +4847,7 @@ function CrmModule({
         description="Gestiona fichas de clientes, preferencias, alergias, reservas por mesa y seguimientos comerciales del salon."
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 xl:grid-cols-4">
         <MetricTile
           label="Clientes"
           value={customers.length.toString()}
@@ -5697,7 +5704,7 @@ function DocumentsModule({
         description="Plantillas persistibles para comandas, pre-cuentas, comprobantes, reservas y cierres con trazabilidad en auditoria."
       />
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
         <MetricCard
           label="Documentos"
           value={operationalDocuments.length.toString()}
@@ -6264,7 +6271,7 @@ function SettingsModule({
         description="Parametros persistibles para branding, documentos, estaciones de impresion, horarios y zonas operativas."
       />
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
         <MetricCard
           label="Zonas activas"
           value={activeZones.length.toString()}
@@ -6500,7 +6507,7 @@ function SettingsModule({
       </div>
 
       <Panel title="Zonas de salon" icon={Table2}>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-3 xl:grid-cols-4">
           {draft.tableZones.map((zone, index) => (
             <div
               key={zone.name}
@@ -6609,7 +6616,7 @@ function ReportsModule() {
         description="Indicadores calculados desde pedidos, caja, inventario, compras, recetas, productos, mermas y desempeno del equipo."
       />
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
         <MetricCard
           label="Venta reconocida"
           value={formatCurrency(reports.recognizedSales)}
@@ -6636,7 +6643,7 @@ function ReportsModule() {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 lg:grid-cols-4">
         <MetricCard
           label="Inventario valorizado"
           value={formatCurrency(reports.inventoryValue)}
@@ -6927,7 +6934,7 @@ function FoodSafetyModule({
         description="Controla temperatura, vencimientos, alergenos, FIFO/LIFO, observaciones sanitarias y trazabilidad por lote."
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 xl:grid-cols-4">
         <MetricTile
           label="Controles hoy"
           value={todayLogs.length.toString()}
@@ -7190,17 +7197,22 @@ function MetricTile({
 }) {
   return (
     <div
-      className={`rounded-lg border p-4 shadow-sm ${
+      data-metric-tile={label}
+      className={`min-w-0 rounded-lg border p-2 shadow-sm sm:p-4 ${
         tone === "danger"
           ? "border-red-200 bg-red-50 text-red-950"
           : "border-black/10 bg-white dark:border-white/10 dark:bg-[#18191b]"
       }`}
     >
-      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+      <p className="truncate text-[10px] font-semibold uppercase leading-tight text-zinc-500 dark:text-zinc-400 sm:text-sm sm:font-medium sm:normal-case">
         {label}
       </p>
-      <p className="mt-3 text-2xl font-semibold">{value}</p>
-      <p className="mt-1 text-sm opacity-75">{detail}</p>
+      <p className="mt-1 truncate text-[15px] font-semibold leading-tight sm:mt-3 sm:text-2xl">
+        {value}
+      </p>
+      <p className="mt-1 hidden truncate text-sm leading-tight opacity-75 sm:block">
+        {detail}
+      </p>
     </div>
   );
 }
@@ -7366,7 +7378,7 @@ function EmployeesModule({
         description="Administra altas, roles, turnos, estados, contacto, costo horario, productividad y permisos por area."
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 xl:grid-cols-4">
         <MetricTile
           label="Trabajadores activos"
           value={`${activeEmployees.length}/${employees.length}`}
@@ -7733,7 +7745,7 @@ function AuditModule() {
         description="Revisa acciones criticas de caja, pedidos, inventario, recetas, productos, trabajadores y seguridad alimentaria con actor, rol, entidad y metadata."
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 xl:grid-cols-4">
         <MetricTile
           label="Eventos hoy"
           value={todayLogs.length.toString()}
@@ -10258,7 +10270,7 @@ function EducationStatusPanel({
 }) {
   return (
     <Panel title={`Estado de la prueba ${simulation.pruebaId}`} icon={ClipboardCheck}>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-3 xl:grid-cols-4">
         <InfoPill
           label="Turno"
           value={`${simulation.shiftStatus} · ${simulation.shiftOpenedAt}`}
@@ -11068,8 +11080,11 @@ function ProductTile({
   expanded?: boolean;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-[#18191b]">
-      <div className="relative h-36 w-full overflow-hidden">
+    <div
+      data-product-tile={product.id}
+      className="flex min-w-0 overflow-hidden rounded-lg border border-black/10 bg-white shadow-sm dark:border-white/10 dark:bg-[#18191b] sm:block"
+    >
+      <div className="relative h-24 w-24 shrink-0 overflow-hidden sm:h-36 sm:w-full">
         <Image
           src={product.image}
           alt={product.name}
@@ -11079,16 +11094,18 @@ function ProductTile({
           className="object-cover"
         />
       </div>
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-lg font-semibold">{product.name}</p>
-            <p className="mt-1 text-sm leading-5 text-zinc-600 dark:text-zinc-300">
+      <div className="flex min-w-0 flex-1 flex-col justify-between p-2.5 sm:block sm:p-4">
+        <div className="flex min-w-0 items-start justify-between gap-2 sm:gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold leading-tight sm:text-lg">
+              {product.name}
+            </p>
+            <p className="mt-1 hidden text-sm leading-5 text-zinc-600 dark:text-zinc-300 sm:block">
               {product.description}
             </p>
           </div>
           <span
-            className={`rounded-md px-2 py-1 text-xs font-semibold ${
+            className={`hidden shrink-0 rounded-md px-2 py-1 text-xs font-semibold sm:inline-flex ${
               product.available
                 ? "bg-emerald-100 text-emerald-900"
                 : "bg-red-100 text-red-900"
@@ -11098,7 +11115,7 @@ function ProductTile({
           </span>
         </div>
         {expanded ? (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 hidden flex-wrap gap-2 sm:flex">
             {product.modifiers.map((modifier) => (
               <span
                 key={modifier}
@@ -11109,16 +11126,20 @@ function ProductTile({
             ))}
           </div>
         ) : null}
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="font-semibold">{formatCurrency(product.price)}</p>
-            <p className="text-sm text-zinc-500">{product.prepTimeMinutes} min</p>
+        <div className="mt-2 flex items-center justify-between gap-2 sm:mt-4 sm:gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold sm:text-base">
+              {formatCurrency(product.price)}
+            </p>
+            <p className="text-xs text-zinc-500 sm:text-sm">
+              {product.prepTimeMinutes} min
+            </p>
           </div>
           <button
             type="button"
             onClick={onAdd}
             disabled={!product.available}
-            className="h-11 rounded-lg bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:bg-white dark:text-zinc-950"
+            className="h-8 shrink-0 rounded-lg bg-zinc-950 px-2.5 text-xs font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-300 dark:bg-white dark:text-zinc-950 sm:h-11 sm:px-4 sm:text-sm"
           >
             Agregar
           </button>
@@ -11195,7 +11216,7 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-black/10 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#18191b] md:p-5">
+    <section className="min-w-0 rounded-lg border border-black/10 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#18191b] md:p-5">
       <div className="mb-4 flex items-center gap-3">
         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100 text-zinc-800 dark:bg-zinc-900 dark:text-zinc-100">
           <Icon className="h-4 w-4" />
@@ -11219,16 +11240,21 @@ function MetricCard({
   tone: string;
 }) {
   return (
-    <div className="rounded-lg border border-black/10 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#18191b]">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+    <div
+      data-metric-card={label}
+      className="min-w-0 rounded-lg border border-black/10 bg-white p-2 shadow-sm dark:border-white/10 dark:bg-[#18191b] sm:p-4"
+    >
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight text-zinc-500 dark:text-zinc-400 sm:text-sm sm:font-medium sm:normal-case">
           {label}
         </p>
-        <span className={`flex h-10 w-10 items-center justify-center rounded-lg text-white ${tone}`}>
-          <Icon className="h-5 w-5" />
+        <span className={`hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white sm:flex lg:h-10 lg:w-10 ${tone}`}>
+          <Icon className="h-4 w-4 lg:h-5 lg:w-5" />
         </span>
       </div>
-      <p className="mt-4 text-2xl font-semibold">{value}</p>
+      <p className="mt-1 truncate text-[15px] font-semibold leading-tight text-zinc-950 dark:text-zinc-50 sm:mt-3 sm:text-2xl">
+        {value}
+      </p>
     </div>
   );
 }
@@ -11557,9 +11583,11 @@ function OrderSummaryRow({ order }: { order: Order }) {
 
 function InfoPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-black/10 bg-white px-3 py-2 dark:border-white/10 dark:bg-zinc-900">
-      <p className="text-xs font-semibold uppercase text-zinc-500">{label}</p>
-      <p className="mt-1 font-semibold">{value}</p>
+    <div className="min-w-0 rounded-lg border border-black/10 bg-white px-2 py-1.5 dark:border-white/10 dark:bg-zinc-900 sm:px-3 sm:py-2">
+      <p className="truncate text-[10px] font-semibold uppercase leading-tight text-zinc-500 sm:text-xs">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-semibold sm:text-base">{value}</p>
     </div>
   );
 }
