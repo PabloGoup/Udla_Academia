@@ -147,6 +147,15 @@ interface OperationNotice {
   message: string;
 }
 
+interface DashboardStats {
+  totalSales: number;
+  activeOrders: number;
+  occupiedTables: number;
+  stockAlerts: number;
+  foodCost: number;
+  kitchenAverage: number;
+}
+
 const RestaurantDataContext = createContext<RestaurantSnapshot>(demoSnapshot);
 
 function useRestaurantData() {
@@ -1764,6 +1773,7 @@ export function RestaurantPlatform() {
             stats={dashboardStats}
             orders={orderState}
             tables={tableState}
+            onModuleSelect={setActiveModule}
           />
         );
       case "tables":
@@ -2152,17 +2162,12 @@ function DashboardModule({
   stats,
   orders,
   tables,
+  onModuleSelect,
 }: {
-  stats: {
-    totalSales: number;
-    activeOrders: number;
-    occupiedTables: number;
-    stockAlerts: number;
-    foodCost: number;
-    kitchenAverage: number;
-  };
+  stats: DashboardStats;
   orders: Order[];
   tables: RestaurantTable[];
+  onModuleSelect: (moduleId: ModuleId) => void;
 }) {
   const latestOrders = orders.slice(0, 4);
 
@@ -2174,41 +2179,45 @@ function DashboardModule({
         description="Vista ejecutiva para coordinar salon, cocina, caja, inventario, costos y seguridad alimentaria."
       />
 
-      <VisualOperationsStrip />
+      <VisualOperationsStrip
+        stats={stats}
+        tables={tables}
+        onModuleSelect={onModuleSelect}
+      />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-        <MetricCard
-          label="Ventas turno"
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-3 xl:grid-cols-6">
+        <DashboardMiniMetric
+          label="Ventas"
           value={formatCurrency(stats.totalSales)}
           icon={BadgeDollarSign}
           tone="bg-emerald-600"
         />
-        <MetricCard
-          label="Pedidos activos"
+        <DashboardMiniMetric
+          label="Pedidos"
           value={stats.activeOrders.toString()}
           icon={ReceiptText}
           tone="bg-amber-500"
         />
-        <MetricCard
-          label="Mesas ocupadas"
+        <DashboardMiniMetric
+          label="Mesas"
           value={`${stats.occupiedTables}/${tables.length}`}
           icon={Table2}
           tone="bg-red-600"
         />
-        <MetricCard
+        <DashboardMiniMetric
           label="Food cost"
           value={formatPercent(stats.foodCost)}
           icon={Calculator}
           tone="bg-[var(--udla-charcoal)]"
         />
-        <MetricCard
-          label="Promedio cocina"
+        <DashboardMiniMetric
+          label="Cocina"
           value={`${stats.kitchenAverage} min`}
           icon={Clock}
           tone="bg-[var(--udla-orange)]"
         />
-        <MetricCard
-          label="Alertas stock"
+        <DashboardMiniMetric
+          label="Stock"
           value={stats.stockAlerts.toString()}
           icon={AlertTriangle}
           tone="bg-orange-600"
@@ -10956,30 +10965,95 @@ function countCompletedEducationModules(completedActionSet: Set<string>) {
   }).length;
 }
 
-function VisualOperationsStrip() {
+function VisualOperationsStrip({
+  stats,
+  tables,
+  onModuleSelect,
+}: {
+  stats: DashboardStats;
+  tables: RestaurantTable[];
+  onModuleSelect: (moduleId: ModuleId) => void;
+}) {
+  const panelActions: Record<
+    string,
+    { moduleId: ModuleId; actionLabel: string; metric: string }
+  > = {
+    Salon: {
+      moduleId: "tables",
+      actionLabel: "Abrir mapa",
+      metric: `${stats.occupiedTables}/${tables.length} mesas`,
+    },
+    Cocina: {
+      moduleId: "kitchen",
+      actionLabel: "Ver comandas",
+      metric: `${stats.kitchenAverage} min`,
+    },
+    Caja: {
+      moduleId: "cash",
+      actionLabel: "Gestionar pagos",
+      metric: formatCurrency(stats.totalSales),
+    },
+    Bodega: {
+      moduleId: "inventory",
+      actionLabel: "Revisar stock",
+      metric: `${stats.stockAlerts} alertas`,
+    },
+  };
+
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      {visualPanels.map((panel) => (
-        <div
-          key={panel.title}
-          className="relative min-h-[170px] overflow-hidden rounded-lg bg-zinc-900 text-white"
-        >
-          <Image
-            src={panel.image}
-            alt={panel.title}
-            fill
-            unoptimized
-            loading="eager"
-            sizes="(min-width: 1280px) 25vw, (min-width: 768px) 50vw, 100vw"
-            className="object-cover opacity-70"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
-          <div className="relative flex h-full min-h-[170px] flex-col justify-end p-4">
-            <p className="text-2xl font-semibold">{panel.title}</p>
-            <p className="mt-1 text-sm text-white/85">{panel.subtitle}</p>
-          </div>
-        </div>
-      ))}
+    <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+      {visualPanels.map((panel) => {
+        const action = panelActions[panel.title] ?? {
+          moduleId: "dashboard" as ModuleId,
+          actionLabel: "Abrir",
+          metric: "Activo",
+        };
+        const moduleMeta = modules.find((moduleItem) => moduleItem.id === action.moduleId);
+        const Icon = moduleMeta?.icon ?? LayoutDashboard;
+
+        return (
+          <button
+            key={panel.title}
+            type="button"
+            data-visual-panel={panel.title}
+            onClick={() => onModuleSelect(action.moduleId)}
+            className="group relative h-24 min-w-0 overflow-hidden rounded-lg bg-zinc-900 text-left text-white shadow-sm ring-1 ring-black/10 transition hover:-translate-y-0.5 hover:ring-[var(--udla-orange)] focus:outline-none focus:ring-2 focus:ring-[var(--udla-orange)] sm:h-32 lg:h-36"
+            aria-label={`Abrir ${getModuleLabel(action.moduleId)}`}
+          >
+            <Image
+              src={panel.image}
+              alt=""
+              fill
+              unoptimized
+              loading="eager"
+              sizes="25vw"
+              className="object-cover opacity-55 transition duration-300 group-hover:scale-105 group-hover:opacity-70"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
+            <div className="relative flex h-full min-w-0 flex-col justify-between p-2 sm:p-3">
+              <div className="flex min-w-0 items-start justify-between gap-1">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white/20 backdrop-blur-sm sm:h-8 sm:w-8">
+                  <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                </span>
+                <span className="min-w-0 truncate rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-semibold leading-tight text-white/95 sm:px-2 sm:text-[11px]">
+                  {action.metric}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-semibold leading-tight sm:text-xl">
+                  {panel.title}
+                </p>
+                <p className="mt-0.5 truncate text-[10px] font-semibold leading-tight text-white/85 sm:text-xs">
+                  {action.actionLabel}
+                </p>
+                <p className="mt-1 hidden text-xs leading-4 text-white/75 sm:block">
+                  {panel.subtitle}
+                </p>
+              </div>
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -11173,6 +11247,39 @@ function EducationMiniMetric({
   return (
     <div
       data-education-metric={label}
+      className="min-w-0 rounded-lg border border-black/10 bg-white p-2 shadow-sm dark:border-white/10 dark:bg-[#18191b] sm:p-3"
+    >
+      <div className="flex min-w-0 items-center justify-between gap-1.5">
+        <p className="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight text-zinc-500 dark:text-zinc-400 sm:text-xs">
+          {label}
+        </p>
+        <span
+          className={`hidden h-6 w-6 shrink-0 items-center justify-center rounded-md text-white sm:flex ${tone}`}
+        >
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+      </div>
+      <p className="mt-1 truncate text-[15px] font-semibold leading-tight text-zinc-950 dark:text-zinc-50 sm:mt-2 sm:text-xl">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function DashboardMiniMetric({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  tone: string;
+}) {
+  return (
+    <div
+      data-dashboard-metric={label}
       className="min-w-0 rounded-lg border border-black/10 bg-white p-2 shadow-sm dark:border-white/10 dark:bg-[#18191b] sm:p-3"
     >
       <div className="flex min-w-0 items-center justify-between gap-1.5">
