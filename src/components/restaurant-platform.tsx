@@ -10240,6 +10240,110 @@ function addUniqueEducationValue(values: string[], value: string) {
   return values.includes(value) ? values : [...values, value];
 }
 
+function EducationStatusPanel({
+  simulation,
+  evidenceCount,
+}: {
+  simulation: EducationSimulationState;
+  evidenceCount: number;
+}) {
+  return (
+    <Panel title={`Estado de la prueba ${simulation.pruebaId}`} icon={ClipboardCheck}>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <InfoPill
+          label="Turno"
+          value={`${simulation.shiftStatus} · ${simulation.shiftOpenedAt}`}
+        />
+        <InfoPill
+          label="Mesa"
+          value={`Mesa ${simulation.tableNumber} · ${tableStatusMeta[simulation.tableStatus].label}`}
+        />
+        <InfoPill
+          label="Cliente"
+          value={`${simulation.customerName} · ${reservationStatusMeta[simulation.reservationStatus].label}`}
+        />
+        <InfoPill
+          label="Pedido"
+          value={`${simulation.orderNumber} · ${orderStatusMeta[simulation.orderStatus].label}`}
+        />
+        <InfoPill
+          label="Cocina"
+          value={orderStatusMeta[simulation.kitchenStatus].label}
+        />
+        <InfoPill
+          label="Producto"
+          value={simulation.productRegistered ? "Registrado" : "Pendiente"}
+        />
+        <InfoPill
+          label="Auditoria producto"
+          value={simulation.productAudited ? "Aprobada" : "Pendiente"}
+        />
+        <InfoPill
+          label="Inventario"
+          value={`${simulation.inventoryMovements} movimientos`}
+        />
+        <InfoPill
+          label="Seguridad"
+          value={`${simulation.foodSafetyChecks} controles`}
+        />
+        <InfoPill
+          label="Caja"
+          value={`${simulation.paymentStatus} · ${formatCurrency(simulation.cashExpected)}`}
+        />
+        <InfoPill
+          label="Comprobantes"
+          value={`${simulation.documents.length} documentos · ${evidenceCount} evidencias`}
+        />
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
+          <p className="text-xs font-semibold uppercase text-zinc-500">
+            Pedido de prueba
+          </p>
+          <div className="mt-2 space-y-2 text-sm">
+            {simulation.orderItems.length ? (
+              simulation.orderItems.map((item) => (
+                <p key={item} className="font-medium">
+                  {item}
+                </p>
+              ))
+            ) : (
+              <p className="text-zinc-500">Aun sin productos registrados.</p>
+            )}
+          </div>
+        </div>
+        <div className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
+          <p className="text-xs font-semibold uppercase text-zinc-500">
+            Documentos generados
+          </p>
+          <div className="mt-2 space-y-2 text-sm">
+            {simulation.documents.length ? (
+              simulation.documents.map((document) => (
+                <p key={document} className="font-medium">
+                  {document}
+                </p>
+              ))
+            ) : (
+              <p className="text-zinc-500">Aun sin documentos.</p>
+            )}
+          </div>
+        </div>
+        <div className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
+          <p className="text-xs font-semibold uppercase text-zinc-500">
+            Validaciones
+          </p>
+          <div className="mt-2 space-y-2 text-sm font-medium">
+            <p>Compra: {simulation.purchaseReceived ? "Recepcionada" : "Pendiente"}</p>
+            <p>Reportes: {simulation.reportsReviewed ? "Revisados" : "Pendientes"}</p>
+            <p>Auditoria: {simulation.auditEntries} eventos</p>
+          </div>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
 function EducationModule() {
   const [educationProgress, setEducationProgress] = useState(
     readStoredEducationProgress,
@@ -10428,126 +10532,32 @@ function EducationModule() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-4">
-        <MetricCard
-          label="Fase actual"
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-3 lg:gap-4">
+        <EducationMiniMetric
+          label="Fase"
           value={`${safePhaseIndex + 1}/${educationPhases.length}`}
           icon={GraduationCap}
           tone="bg-[var(--udla-orange)]"
         />
-        <MetricCard
-          label="Pruebas aprobadas"
+        <EducationMiniMetric
+          label="Aprobadas"
           value={`${completedCount}/${totalActionCount}`}
           icon={ListChecks}
           tone="bg-emerald-600"
         />
-        <MetricCard
-          label="Funciones comprobadas"
+        <EducationMiniMetric
+          label="Funciones"
           value={`${countCompletedEducationModules(completedActionSet)}/${educationCoverageModules.length}`}
           icon={LayoutDashboard}
           tone="bg-[var(--udla-charcoal)]"
         />
-        <MetricCard
+        <EducationMiniMetric
           label="Estado"
           value={tutorialComplete ? "Terminado" : "En curso"}
           icon={Activity}
           tone={tutorialComplete ? "bg-emerald-600" : "bg-amber-600"}
         />
       </div>
-
-      <Panel title={`Estado de la prueba ${simulation.pruebaId}`} icon={ClipboardCheck}>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <InfoPill
-            label="Turno"
-            value={`${simulation.shiftStatus} · ${simulation.shiftOpenedAt}`}
-          />
-          <InfoPill
-            label="Mesa"
-            value={`Mesa ${simulation.tableNumber} · ${tableStatusMeta[simulation.tableStatus].label}`}
-          />
-          <InfoPill
-            label="Cliente"
-            value={`${simulation.customerName} · ${reservationStatusMeta[simulation.reservationStatus].label}`}
-          />
-          <InfoPill
-            label="Pedido"
-            value={`${simulation.orderNumber} · ${orderStatusMeta[simulation.orderStatus].label}`}
-          />
-          <InfoPill
-            label="Cocina"
-            value={orderStatusMeta[simulation.kitchenStatus].label}
-          />
-          <InfoPill
-            label="Producto"
-            value={simulation.productRegistered ? "Registrado" : "Pendiente"}
-          />
-          <InfoPill
-            label="Auditoria producto"
-            value={simulation.productAudited ? "Aprobada" : "Pendiente"}
-          />
-          <InfoPill
-            label="Inventario"
-            value={`${simulation.inventoryMovements} movimientos`}
-          />
-          <InfoPill
-            label="Seguridad"
-            value={`${simulation.foodSafetyChecks} controles`}
-          />
-          <InfoPill
-            label="Caja"
-            value={`${simulation.paymentStatus} · ${formatCurrency(simulation.cashExpected)}`}
-          />
-          <InfoPill
-            label="Comprobantes"
-            value={`${simulation.documents.length} documentos · ${evidence.length} evidencias`}
-          />
-        </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
-            <p className="text-xs font-semibold uppercase text-zinc-500">
-              Pedido de prueba
-            </p>
-            <div className="mt-2 space-y-2 text-sm">
-              {simulation.orderItems.length ? (
-                simulation.orderItems.map((item) => (
-                  <p key={item} className="font-medium">
-                    {item}
-                  </p>
-                ))
-              ) : (
-                <p className="text-zinc-500">Aun sin productos registrados.</p>
-              )}
-            </div>
-          </div>
-          <div className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
-            <p className="text-xs font-semibold uppercase text-zinc-500">
-              Documentos generados
-            </p>
-            <div className="mt-2 space-y-2 text-sm">
-              {simulation.documents.length ? (
-                simulation.documents.map((document) => (
-                  <p key={document} className="font-medium">
-                    {document}
-                  </p>
-                ))
-              ) : (
-                <p className="text-zinc-500">Aun sin documentos.</p>
-              )}
-            </div>
-          </div>
-          <div className="rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
-            <p className="text-xs font-semibold uppercase text-zinc-500">
-              Validaciones
-            </p>
-            <div className="mt-2 space-y-2 text-sm font-medium">
-              <p>Compra: {simulation.purchaseReceived ? "Recepcionada" : "Pendiente"}</p>
-              <p>Reportes: {simulation.reportsReviewed ? "Revisados" : "Pendientes"}</p>
-              <p>Auditoria: {simulation.auditEntries} eventos</p>
-            </div>
-          </div>
-        </div>
-      </Panel>
 
       {tutorialComplete ? (
         <div className="rounded-lg border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-400/30 dark:bg-emerald-950/30 dark:text-emerald-100">
@@ -10855,32 +10865,10 @@ function EducationModule() {
         </Panel>
       </div>
 
-      <Panel title="Cobertura de funciones" icon={LayoutDashboard}>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {educationCoverageModules.map((moduleId) => {
-            const moduleActions = educationPhases.flatMap((phase) =>
-              phase.actions.filter((action) => action.moduleId === moduleId),
-            );
-            const moduleDone = moduleActions.every((action) =>
-              completedActionSet.has(action.id),
-            );
-            const moduleMeta = modules.find((moduleItem) => moduleItem.id === moduleId);
-
-            return (
-              <div
-                key={moduleId}
-                className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
-                  moduleDone
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                    : "border-black/10 bg-zinc-50 text-zinc-600 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300"
-                }`}
-              >
-                {moduleMeta?.shortLabel ?? moduleMeta?.label ?? moduleId}
-              </div>
-            );
-          })}
-        </div>
-      </Panel>
+      <EducationStatusPanel
+        simulation={simulation}
+        evidenceCount={evidence.length}
+      />
 
       <Panel title="Bitacora comprobable de la prueba" icon={ListChecks}>
         <div className="space-y-3">
@@ -10924,6 +10912,34 @@ function EducationModule() {
               Ejecuta el primer paso para generar evidencia comprobable.
             </div>
           )}
+        </div>
+      </Panel>
+
+      <Panel title="Cobertura de funciones" icon={LayoutDashboard}>
+        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 xl:grid-cols-8">
+          {educationCoverageModules.map((moduleId) => {
+            const moduleActions = educationPhases.flatMap((phase) =>
+              phase.actions.filter((action) => action.moduleId === moduleId),
+            );
+            const moduleDone = moduleActions.every((action) =>
+              completedActionSet.has(action.id),
+            );
+            const moduleMeta = modules.find((moduleItem) => moduleItem.id === moduleId);
+
+            return (
+              <div
+                key={moduleId}
+                data-education-coverage={moduleId}
+                className={`min-w-0 truncate rounded-md border px-2 py-1.5 text-center text-[11px] font-semibold leading-tight sm:text-xs ${
+                  moduleDone
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                    : "border-black/10 bg-zinc-50 text-zinc-600 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300"
+                }`}
+              >
+                {moduleMeta?.shortLabel ?? moduleMeta?.label ?? moduleId}
+              </div>
+            );
+          })}
         </div>
       </Panel>
     </div>
@@ -11139,6 +11155,39 @@ function MetricCard({
         </span>
       </div>
       <p className="mt-4 text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function EducationMiniMetric({
+  label,
+  value,
+  icon: Icon,
+  tone,
+}: {
+  label: string;
+  value: string;
+  icon: LucideIcon;
+  tone: string;
+}) {
+  return (
+    <div
+      data-education-metric={label}
+      className="min-w-0 rounded-lg border border-black/10 bg-white p-2 shadow-sm dark:border-white/10 dark:bg-[#18191b] sm:p-3"
+    >
+      <div className="flex min-w-0 items-center justify-between gap-1.5">
+        <p className="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight text-zinc-500 dark:text-zinc-400 sm:text-xs">
+          {label}
+        </p>
+        <span
+          className={`hidden h-6 w-6 shrink-0 items-center justify-center rounded-md text-white sm:flex ${tone}`}
+        >
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+      </div>
+      <p className="mt-1 truncate text-[15px] font-semibold leading-tight text-zinc-950 dark:text-zinc-50 sm:mt-2 sm:text-xl">
+        {value}
+      </p>
     </div>
   );
 }
