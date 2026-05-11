@@ -13,19 +13,23 @@ on conflict (id) do update set
   reliability_score = excluded.reliability_score;
 
 insert into public.employees (
-  id, role_id, full_name, shift, status
+  id, role_id, full_name, rut, phone, shift, hourly_cost, status, hired_at
 ) values
-  ('00000000-0000-4100-8000-000000000001', 'administrator', 'Paula Contreras', 'Administracion', 'active'),
-  ('00000000-0000-4100-8000-000000000002', 'chef', 'Rodrigo Fuentes', 'Cocina AM', 'active'),
-  ('00000000-0000-4100-8000-000000000003', 'waiter', 'Valentina Reyes', 'Salon AM', 'active'),
-  ('00000000-0000-4100-8000-000000000004', 'waiter', 'Camila Soto', 'Salon AM', 'break'),
-  ('00000000-0000-4100-8000-000000000005', 'cashier', 'Felipe Araya', 'Caja AM', 'active'),
-  ('00000000-0000-4100-8000-000000000006', 'warehouse', 'Daniel Vega', 'Bodega', 'active')
+  ('00000000-0000-4100-8000-000000000001', 'administrator', 'Paula Contreras', '12.345.678-5', '+56 9 7000 1101', 'Administracion', 11500, 'active', '2024-03-01'),
+  ('00000000-0000-4100-8000-000000000002', 'chef', 'Rodrigo Fuentes', '13.222.111-9', '+56 9 7000 1102', 'Cocina AM', 9800, 'active', '2024-04-15'),
+  ('00000000-0000-4100-8000-000000000003', 'waiter', 'Valentina Reyes', '18.445.120-2', '+56 9 7000 1103', 'Salon AM', 5200, 'active', '2025-01-10'),
+  ('00000000-0000-4100-8000-000000000004', 'waiter', 'Camila Soto', '19.002.441-7', '+56 9 7000 1104', 'Salon AM', 5200, 'break', '2025-02-03'),
+  ('00000000-0000-4100-8000-000000000005', 'cashier', 'Felipe Araya', '16.778.901-3', '+56 9 7000 1105', 'Caja AM', 6100, 'active', '2024-11-20'),
+  ('00000000-0000-4100-8000-000000000006', 'warehouse', 'Daniel Vega', '15.994.200-8', '+56 9 7000 1106', 'Bodega', 6400, 'active', '2024-08-05')
 on conflict (id) do update set
   role_id = excluded.role_id,
   full_name = excluded.full_name,
+  rut = excluded.rut,
+  phone = excluded.phone,
   shift = excluded.shift,
-  status = excluded.status;
+  hourly_cost = excluded.hourly_cost,
+  status = excluded.status,
+  hired_at = excluded.hired_at;
 
 insert into public.product_categories (
   id, name, color, sort_order
@@ -115,6 +119,90 @@ on conflict (id) do update set
   lot = excluded.lot,
   sanitary_risk = excluded.sanitary_risk,
   storage_notes = excluded.storage_notes;
+
+insert into public.inventory_movements (
+  id, raw_material_id, movement_type, quantity, unit_cost, reason, responsible_id, created_at
+) values
+  (
+    '00000000-0000-4d00-8000-000000000001',
+    '00000000-0000-4300-8000-000000000001',
+    'initial',
+    7200,
+    14.2857,
+    'Stock inicial academico',
+    '00000000-0000-4100-8000-000000000006',
+    now() - interval '5 hours'
+  ),
+  (
+    '00000000-0000-4d00-8000-000000000002',
+    '00000000-0000-4300-8000-000000000005',
+    'waste',
+    -320,
+    6.5625,
+    'Madurez avanzada',
+    '00000000-0000-4100-8000-000000000006',
+    now() - interval '2 hours'
+  ),
+  (
+    '00000000-0000-4d00-8000-000000000003',
+    '00000000-0000-4300-8000-000000000002',
+    'manual_out',
+    -420,
+    16.4103,
+    'Mise en place cocina fria',
+    '00000000-0000-4100-8000-000000000002',
+    now() - interval '105 minutes'
+  )
+on conflict (id) do update set
+  raw_material_id = excluded.raw_material_id,
+  movement_type = excluded.movement_type,
+  quantity = excluded.quantity,
+  unit_cost = excluded.unit_cost,
+  reason = excluded.reason,
+  responsible_id = excluded.responsible_id,
+  created_at = excluded.created_at;
+
+insert into public.food_safety_logs (
+  id, raw_material_id, check_type, measured_temperature, result, notes, responsible_id, created_at
+) values
+  (
+    '00000000-0000-4f00-8000-000000000001',
+    '00000000-0000-4300-8000-000000000002',
+    'Temperatura de recepcion',
+    '1.8 C',
+    'ok',
+    'Producto recibido frio, bandeja con drenaje y rotulo vigente.',
+    '00000000-0000-4100-8000-000000000006',
+    now() - interval '90 minutes'
+  ),
+  (
+    '00000000-0000-4f00-8000-000000000002',
+    '00000000-0000-4300-8000-000000000005',
+    'Control de vencimiento',
+    '7 C',
+    'warning',
+    'Madurez avanzada. Priorizar uso en mise en place de hoy.',
+    '00000000-0000-4100-8000-000000000002',
+    now() - interval '55 minutes'
+  ),
+  (
+    '00000000-0000-4f00-8000-000000000003',
+    '00000000-0000-4300-8000-000000000009',
+    'Alergenos y separacion',
+    'Ambiente seco',
+    'ok',
+    'Contenedor cerrado, separado y rotulado como gluten.',
+    '00000000-0000-4100-8000-000000000006',
+    now() - interval '30 minutes'
+  )
+on conflict (id) do update set
+  raw_material_id = excluded.raw_material_id,
+  check_type = excluded.check_type,
+  measured_temperature = excluded.measured_temperature,
+  result = excluded.result,
+  notes = excluded.notes,
+  responsible_id = excluded.responsible_id,
+  created_at = excluded.created_at;
 
 insert into public.recipes (
   id, name, category, portions, prep_time_minutes, photo_url,
@@ -286,6 +374,199 @@ on conflict (id) do update set
   zone = excluded.zone,
   status = excluded.status;
 
+insert into public.customers (
+  id, full_name, phone, email, document_id, preferences, allergies, tags,
+  visit_count, total_spent, last_visit_at, notes
+) values
+  (
+    '00000000-0000-5100-8000-000000000001',
+    'Carolina Munoz',
+    '+56 9 8111 2001',
+    'carolina.munoz@example.com',
+    '17.440.221-5',
+    'Prefiere terraza, vinos blancos y platos sin lacteos.',
+    array['Lacteos'],
+    array['Frecuente', 'Cumpleanos'],
+    8,
+    426800,
+    now() - interval '7 days',
+    'Solicitar confirmacion por WhatsApp el mismo dia.'
+  ),
+  (
+    '00000000-0000-5100-8000-000000000002',
+    'Andres Salinas',
+    '+56 9 8222 2002',
+    'andres.salinas@example.com',
+    '14.202.118-0',
+    'Mesa tranquila, sin picante, agua sin gas.',
+    array['Mariscos'],
+    array['Alergia declarada', 'Empresa'],
+    4,
+    281500,
+    now() - interval '11 days',
+    'Registrar alerta de alergia en comandas.'
+  ),
+  (
+    '00000000-0000-5100-8000-000000000003',
+    'Isidora Paredes',
+    '+56 9 8333 2003',
+    'isidora.paredes@example.com',
+    '20.341.908-6',
+    'Celebraciones pequenas, postres para compartir.',
+    array[]::text[],
+    array['Reserva web', 'Familia'],
+    2,
+    137900,
+    now() - interval '28 days',
+    'Prefiere confirmacion por email.'
+  ),
+  (
+    '00000000-0000-5100-8000-000000000004',
+    'Matias Vergara',
+    '+56 9 8444 2004',
+    'matias.vergara@example.com',
+    '16.902.118-4',
+    'Barra, jugos naturales, opciones vegetarianas.',
+    array[]::text[],
+    array['Nuevo', 'Barra'],
+    1,
+    38900,
+    now() - interval '1 day',
+    'Invitar a programa de fidelizacion.'
+  )
+on conflict (id) do update set
+  full_name = excluded.full_name,
+  phone = excluded.phone,
+  email = excluded.email,
+  document_id = excluded.document_id,
+  preferences = excluded.preferences,
+  allergies = excluded.allergies,
+  tags = excluded.tags,
+  visit_count = excluded.visit_count,
+  total_spent = excluded.total_spent,
+  last_visit_at = excluded.last_visit_at,
+  notes = excluded.notes;
+
+insert into public.reservations (
+  id, customer_id, table_id, assigned_to, created_by, reservation_date,
+  reservation_time, party_size, status, channel, occasion, notes, created_at
+) values
+  (
+    '00000000-0000-5200-8000-000000000001',
+    '00000000-0000-5100-8000-000000000001',
+    '00000000-0000-4700-8000-000000000003',
+    '00000000-0000-4100-8000-000000000003',
+    '00000000-0000-4100-8000-000000000003',
+    '2026-05-10',
+    '20:30',
+    6,
+    'confirmed',
+    'whatsapp',
+    'Cumpleanos',
+    'Preparar mesa con espacio para torta. Sin lacteos.',
+    now() - interval '3 hours'
+  ),
+  (
+    '00000000-0000-5200-8000-000000000002',
+    '00000000-0000-5100-8000-000000000002',
+    '00000000-0000-4700-8000-000000000009',
+    '00000000-0000-4100-8000-000000000004',
+    '00000000-0000-4100-8000-000000000004',
+    '2026-05-10',
+    '13:45',
+    2,
+    'seated',
+    'phone',
+    'Almuerzo empresa',
+    'Alergia a mariscos. Confirmar con cocina antes de enviar.',
+    now() - interval '4 hours'
+  ),
+  (
+    '00000000-0000-5200-8000-000000000003',
+    '00000000-0000-5100-8000-000000000003',
+    '00000000-0000-4700-8000-000000000011',
+    '00000000-0000-4100-8000-000000000003',
+    '00000000-0000-4100-8000-000000000003',
+    '2026-05-11',
+    '21:00',
+    5,
+    'pending',
+    'web',
+    'Cena familiar',
+    'Pendiente confirmar asistencia antes de las 17:00.',
+    now() - interval '2 hours'
+  ),
+  (
+    '00000000-0000-5200-8000-000000000004',
+    '00000000-0000-5100-8000-000000000004',
+    '00000000-0000-4700-8000-000000000010',
+    '00000000-0000-4100-8000-000000000005',
+    '00000000-0000-4100-8000-000000000005',
+    '2026-05-10',
+    '19:00',
+    2,
+    'cancelled',
+    'walk_in',
+    'Sin ocasion',
+    'Cancelada por cambio de horario.',
+    now() - interval '1 hour'
+  )
+on conflict (id) do update set
+  customer_id = excluded.customer_id,
+  table_id = excluded.table_id,
+  assigned_to = excluded.assigned_to,
+  created_by = excluded.created_by,
+  reservation_date = excluded.reservation_date,
+  reservation_time = excluded.reservation_time,
+  party_size = excluded.party_size,
+  status = excluded.status,
+  channel = excluded.channel,
+  occasion = excluded.occasion,
+  notes = excluded.notes,
+  created_at = excluded.created_at;
+
+insert into public.customer_interactions (
+  id, customer_id, interaction_type, summary, due_at, completed_at, responsible_id, created_at
+) values
+  (
+    '00000000-0000-5300-8000-000000000001',
+    '00000000-0000-5100-8000-000000000001',
+    'message',
+    'Confirmacion enviada por WhatsApp para reserva de cumpleanos.',
+    null,
+    now() - interval '90 minutes',
+    '00000000-0000-4100-8000-000000000003',
+    now() - interval '90 minutes'
+  ),
+  (
+    '00000000-0000-5300-8000-000000000002',
+    '00000000-0000-5100-8000-000000000002',
+    'preference',
+    'Se reforzo alerta de alergia a mariscos en ficha y reserva.',
+    null,
+    now() - interval '4 hours',
+    '00000000-0000-4100-8000-000000000004',
+    now() - interval '4 hours'
+  ),
+  (
+    '00000000-0000-5300-8000-000000000003',
+    '00000000-0000-5100-8000-000000000003',
+    'follow_up',
+    'Confirmar asistencia y cantidad final de comensales.',
+    '2026-05-11 17:00:00-04',
+    null,
+    '00000000-0000-4100-8000-000000000003',
+    now() - interval '2 hours'
+  )
+on conflict (id) do update set
+  customer_id = excluded.customer_id,
+  interaction_type = excluded.interaction_type,
+  summary = excluded.summary,
+  due_at = excluded.due_at,
+  completed_at = excluded.completed_at,
+  responsible_id = excluded.responsible_id,
+  created_at = excluded.created_at;
+
 insert into public.orders (
   id, order_number, table_id, waiter_id, status,
   subtotal, discount_amount, tip_amount, total_amount, created_at
@@ -356,6 +637,57 @@ on conflict (id) do update set
   status = excluded.status,
   received_by = excluded.received_by;
 
+insert into public.purchase_items (
+  id, purchase_id, raw_material_id, description, quantity, unit, unit_cost,
+  yield_percent, expiration_date, lot
+) values
+  (
+    '00000000-0000-4e00-8000-000000000001',
+    '00000000-0000-4a00-8000-000000000001',
+    '00000000-0000-4300-8000-000000000001',
+    'Lomo de vacuno caja AM',
+    12000,
+    'g',
+    15.3333,
+    70,
+    '2026-05-12',
+    'CAR-0508-A'
+  ),
+  (
+    '00000000-0000-4e00-8000-000000000002',
+    '00000000-0000-4a00-8000-000000000002',
+    '00000000-0000-4300-8000-000000000002',
+    'Salmon fresco filete',
+    9000,
+    'g',
+    15.9556,
+    78,
+    '2026-05-10',
+    'PES-0508-S'
+  ),
+  (
+    '00000000-0000-4e00-8000-000000000003',
+    '00000000-0000-4a00-8000-000000000003',
+    '00000000-0000-4300-8000-000000000005',
+    'Palta hass malla',
+    11571,
+    'g',
+    4.2002,
+    64,
+    '2026-05-11',
+    'VER-0508-P'
+  )
+on conflict (id) do update set
+  purchase_id = excluded.purchase_id,
+  raw_material_id = excluded.raw_material_id,
+  description = excluded.description,
+  quantity = excluded.quantity,
+  unit = excluded.unit,
+  unit_cost = excluded.unit_cost,
+  yield_percent = excluded.yield_percent,
+  expiration_date = excluded.expiration_date,
+  lot = excluded.lot;
+
 insert into public.cash_registers (
   id, opened_by, opening_amount, expected_amount, status
 ) values
@@ -383,4 +715,83 @@ on conflict (id) do update set
   amount = excluded.amount,
   description = excluded.description,
   responsible_id = excluded.responsible_id,
+  created_at = excluded.created_at;
+
+insert into public.audit_logs (
+  id, actor_id, actor_role, action, entity_type, entity_id, summary, metadata, created_at
+) values
+  (
+    '00000000-0000-5000-8000-000000000005',
+    '00000000-0000-4100-8000-000000000003',
+    'waiter',
+    'reservation.upsert',
+    'reservation',
+    '00000000-0000-5200-8000-000000000001',
+    'Reserva confirmada para Carolina Munoz.',
+    '{"date":"2026-05-10","time":"20:30","partySize":6}'::jsonb,
+    now() - interval '3 hours'
+  ),
+  (
+    '00000000-0000-5000-8000-000000000006',
+    '00000000-0000-4100-8000-000000000004',
+    'waiter',
+    'crm.interaction.create',
+    'customer',
+    '00000000-0000-5100-8000-000000000002',
+    'Alerta de alergia reforzada en ficha de cliente.',
+    '{"type":"preference","allergy":"Mariscos"}'::jsonb,
+    now() - interval '4 hours'
+  ),
+  (
+    '00000000-0000-5000-8000-000000000001',
+    '00000000-0000-4100-8000-000000000005',
+    'cashier',
+    'cash.payment.settle',
+    'order',
+    '00000000-0000-4800-8000-000000000003',
+    'Cuenta A-1050 cobrada con debito y descuento de inventario.',
+    '{"paymentMethod":"debit","amount":57200,"table":7}'::jsonb,
+    now() - interval '25 minutes'
+  ),
+  (
+    '00000000-0000-5000-8000-000000000002',
+    '00000000-0000-4100-8000-000000000006',
+    'warehouse',
+    'inventory.movement.create',
+    'raw_material',
+    '00000000-0000-4300-8000-000000000005',
+    'Merma registrada por madurez avanzada.',
+    '{"movementType":"waste","quantity":-320}'::jsonb,
+    now() - interval '2 hours'
+  ),
+  (
+    '00000000-0000-5000-8000-000000000003',
+    '00000000-0000-4100-8000-000000000006',
+    'warehouse',
+    'food_safety.check.create',
+    'raw_material',
+    '00000000-0000-4300-8000-000000000002',
+    'Control sanitario conforme para Salmon fresco.',
+    '{"result":"ok","temperature":"1.8 C"}'::jsonb,
+    now() - interval '90 minutes'
+  ),
+  (
+    '00000000-0000-5000-8000-000000000004',
+    '00000000-0000-4100-8000-000000000002',
+    'chef',
+    'recipe.upsert',
+    'recipe',
+    '00000000-0000-4400-8000-000000000001',
+    'Receta tecnica actualizada con rendimiento y food cost objetivo.',
+    '{"targetFoodCostPercent":30,"portions":4}'::jsonb,
+    now() - interval '3 hours'
+  )
+on conflict (id) do update set
+  actor_id = excluded.actor_id,
+  actor_role = excluded.actor_role,
+  action = excluded.action,
+  entity_type = excluded.entity_type,
+  entity_id = excluded.entity_id,
+  summary = excluded.summary,
+  metadata = excluded.metadata,
   created_at = excluded.created_at;

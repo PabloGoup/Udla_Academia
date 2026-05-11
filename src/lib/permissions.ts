@@ -15,9 +15,11 @@ export const roleProfiles: RoleProfile[] = [
       "recipes:manage",
       "inventory:manage",
       "purchases:manage",
+      "crm:manage",
       "reports:read",
       "food-safety:manage",
       "employees:manage",
+      "audit:read",
       "education:read",
       "architecture:read",
     ],
@@ -32,10 +34,12 @@ export const roleProfiles: RoleProfile[] = [
       "orders:manage",
       "kitchen:manage",
       "cash:manage",
+      "crm:manage",
       "inventory:manage",
       "reports:read",
       "food-safety:manage",
       "employees:manage",
+      "audit:read",
       "education:read",
     ],
   },
@@ -47,6 +51,7 @@ export const roleProfiles: RoleProfile[] = [
       "dashboard:read",
       "orders:manage",
       "cash:manage",
+      "crm:manage",
       "reports:read",
       "education:read",
     ],
@@ -59,6 +64,7 @@ export const roleProfiles: RoleProfile[] = [
       "dashboard:read",
       "tables:manage",
       "orders:manage",
+      "crm:manage",
       "education:read",
     ],
   },
@@ -108,9 +114,11 @@ export const modulePermissionMap: Record<ModuleId, Permission> = {
   recipes: "recipes:manage",
   inventory: "inventory:manage",
   purchases: "purchases:manage",
+  crm: "crm:manage",
   reports: "reports:read",
   foodSafety: "food-safety:manage",
   employees: "employees:manage",
+  audit: "audit:read",
   education: "education:read",
   architecture: "architecture:read",
 };
@@ -123,4 +131,3 @@ export function canAccessModule(roleId: RoleId, moduleId: ModuleId) {
   const role = getRoleProfile(roleId);
   return role.permissions.includes(modulePermissionMap[moduleId]);
 }
-

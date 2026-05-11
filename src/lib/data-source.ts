@@ -1,29 +1,46 @@
 import {
+  auditLogs as demoAuditLogs,
+  cashRegisters as demoCashRegisters,
   cashMovements as demoCashMovements,
+  customerInteractions as demoCustomerInteractions,
+  customers as demoCustomers,
   employees as demoEmployees,
+  foodSafetyLogs as demoFoodSafetyLogs,
+  inventoryMovements as demoInventoryMovements,
   orders as demoOrders,
   productCategories as demoProductCategories,
   products as demoProducts,
+  purchaseItems as demoPurchaseItems,
   purchases as demoPurchases,
   rawMaterials as demoRawMaterials,
   recipes as demoRecipes,
+  reservations as demoReservations,
   reportPoints as demoReportPoints,
   restaurantTables as demoRestaurantTables,
   suppliers as demoSuppliers,
 } from "@/lib/demo-data";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 import type {
+  AuditLog,
   CashMovement,
+  CashRegister,
+  Customer,
+  CustomerInteraction,
   Employee,
+  FoodSafetyLog,
+  InventoryMovement,
   Order,
   OrderStatus,
   PaymentMethod,
   Product,
   ProductCategory,
   Purchase,
+  PurchaseItem,
   RawMaterial,
   Recipe,
   RecipeIngredient,
+  Reservation,
+  ReservationStatus,
   ReportPoint,
   RestaurantTable,
   RoleId,
@@ -45,8 +62,16 @@ export interface RestaurantSnapshot {
   recipes: Recipe[];
   suppliers: Supplier[];
   purchases: Purchase[];
+  purchaseItems: PurchaseItem[];
   employees: Employee[];
   cashMovements: CashMovement[];
+  cashRegisters: CashRegister[];
+  inventoryMovements: InventoryMovement[];
+  foodSafetyLogs: FoodSafetyLog[];
+  customers: Customer[];
+  reservations: Reservation[];
+  customerInteractions: CustomerInteraction[];
+  auditLogs: AuditLog[];
   reportPoints: ReportPoint[];
 }
 
@@ -61,10 +86,15 @@ type DbTable = {
 
 type DbEmployee = {
   id: string;
+  user_id: string | null;
   full_name: string;
   role_id: string;
+  rut: string | null;
+  phone: string | null;
   shift: string | null;
+  hourly_cost: number | string | null;
   status: string | null;
+  hired_at: string | null;
 };
 
 type DbOrder = {
@@ -153,6 +183,7 @@ type DbRecipe = {
   allergens: string[] | null;
   observations: string | null;
   target_food_cost_percent: number | string | null;
+  reference_sale_price: number | string | null;
 };
 
 type DbRecipeIngredient = {
@@ -175,6 +206,20 @@ type DbPurchase = {
   status: string;
 };
 
+type DbPurchaseItem = {
+  id: string;
+  purchase_id: string;
+  raw_material_id: string | null;
+  description: string;
+  quantity: number | string;
+  unit: string;
+  unit_cost: number | string | null;
+  yield_percent: number | string | null;
+  expiration_date: string | null;
+  lot: string | null;
+  total_cost: number | string | null;
+};
+
 type DbCashMovement = {
   id: string;
   movement_type: string;
@@ -182,6 +227,96 @@ type DbCashMovement = {
   amount: number | string;
   description: string | null;
   responsible_id: string | null;
+  created_at: string;
+};
+
+type DbCashRegister = {
+  id: string;
+  opened_by: string | null;
+  closed_by: string | null;
+  opening_amount: number | string | null;
+  expected_amount: number | string | null;
+  counted_amount: number | string | null;
+  difference_amount: number | string | null;
+  opened_at: string;
+  closed_at: string | null;
+  status: string;
+  notes: string | null;
+};
+
+type DbInventoryMovement = {
+  id: string;
+  raw_material_id: string;
+  movement_type: string;
+  quantity: number | string;
+  unit_cost: number | string | null;
+  reason: string | null;
+  responsible_id: string | null;
+  created_at: string;
+};
+
+type DbFoodSafetyLog = {
+  id: string;
+  raw_material_id: string | null;
+  check_type: string;
+  measured_temperature: string | null;
+  result: string | null;
+  notes: string | null;
+  responsible_id: string | null;
+  created_at: string;
+};
+
+type DbCustomer = {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  document_id: string | null;
+  preferences: string | null;
+  allergies: string[] | null;
+  tags: string[] | null;
+  visit_count: number | string | null;
+  total_spent: number | string | null;
+  last_visit_at: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+type DbReservation = {
+  id: string;
+  customer_id: string | null;
+  table_id: string | null;
+  party_size: number | string | null;
+  reservation_date: string;
+  reservation_time: string;
+  status: string;
+  channel: string | null;
+  occasion: string | null;
+  notes: string | null;
+  assigned_to: string | null;
+  created_at: string;
+};
+
+type DbCustomerInteraction = {
+  id: string;
+  customer_id: string;
+  interaction_type: string;
+  summary: string;
+  due_at: string | null;
+  completed_at: string | null;
+  responsible_id: string | null;
+  created_at: string;
+};
+
+type DbAuditLog = {
+  id: string;
+  actor_id: string | null;
+  actor_role: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  summary: string | null;
+  metadata: unknown;
   created_at: string;
 };
 
@@ -196,8 +331,16 @@ export const demoSnapshot: RestaurantSnapshot = {
   recipes: demoRecipes,
   suppliers: demoSuppliers,
   purchases: demoPurchases,
+  purchaseItems: demoPurchaseItems,
   employees: demoEmployees,
   cashMovements: demoCashMovements,
+  cashRegisters: demoCashRegisters,
+  inventoryMovements: demoInventoryMovements,
+  foodSafetyLogs: demoFoodSafetyLogs,
+  customers: demoCustomers,
+  reservations: demoReservations,
+  customerInteractions: demoCustomerInteractions,
+  auditLogs: demoAuditLogs,
   reportPoints: demoReportPoints,
 };
 
@@ -208,6 +351,8 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
 
   try {
     const supabase = getSupabaseBrowserClient();
+    const { data: authData } = await supabase.auth.getUser();
+    const shouldLoadAuthenticatedTables = Boolean(authData.user);
     const [
       tablesResult,
       employeesResult,
@@ -220,7 +365,15 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
       recipesResult,
       recipeIngredientsResult,
       purchasesResult,
+      purchaseItemsResult,
       cashMovementsResult,
+      cashRegistersResult,
+      inventoryMovementsResult,
+      foodSafetyLogsResult,
+      customersResult,
+      reservationsResult,
+      customerInteractionsResult,
+      auditLogsResult,
     ] = await Promise.all([
       supabase.from("tables").select("*").order("number"),
       supabase.from("employees").select("*").order("full_name"),
@@ -235,9 +388,45 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
       supabase.from("purchases").select("*").order("purchase_date", {
         ascending: false,
       }),
+      supabase.from("purchase_items").select("*").order("created_at", {
+        ascending: false,
+      }),
       supabase.from("cash_movements").select("*").order("created_at", {
         ascending: false,
       }),
+      supabase.from("cash_registers").select("*").order("opened_at", {
+        ascending: false,
+      }),
+      supabase.from("inventory_movements").select("*").order("created_at", {
+        ascending: false,
+      }),
+      supabase.from("food_safety_logs").select("*").order("created_at", {
+        ascending: false,
+      }),
+      shouldLoadAuthenticatedTables
+        ? supabase.from("customers").select("*").order("full_name")
+        : Promise.resolve({ data: [], error: null }),
+      shouldLoadAuthenticatedTables
+        ? supabase
+            .from("reservations")
+            .select("*")
+            .order("reservation_date", { ascending: true })
+            .order("reservation_time", { ascending: true })
+        : Promise.resolve({ data: [], error: null }),
+      shouldLoadAuthenticatedTables
+        ? supabase
+            .from("customer_interactions")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(80)
+        : Promise.resolve({ data: [], error: null }),
+      shouldLoadAuthenticatedTables
+        ? supabase
+            .from("audit_logs")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(80)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
     const firstError = [
@@ -252,7 +441,15 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
       recipesResult.error,
       recipeIngredientsResult.error,
       purchasesResult.error,
+      purchaseItemsResult.error,
       cashMovementsResult.error,
+      cashRegistersResult.error,
+      inventoryMovementsResult.error,
+      foodSafetyLogsResult.error,
+      customersResult.error,
+      reservationsResult.error,
+      customerInteractionsResult.error,
+      auditLogsResult.error,
     ].find(Boolean);
 
     if (firstError) {
@@ -289,7 +486,7 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
       const currentOrder = orders.find(
         (order) =>
           order.tableNumber === table.number &&
-          !["delivered", "cancelled"].includes(order.status),
+          !["paid", "cancelled"].includes(order.status),
       );
 
       return {
@@ -302,12 +499,48 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
       };
     });
 
+    const purchaseItems = mapPurchaseItems(
+      (purchaseItemsResult.data ?? []) as DbPurchaseItem[],
+      rawMaterialById,
+    );
     const purchases = mapPurchases(
       (purchasesResult.data ?? []) as DbPurchase[],
       supplierById,
+      purchaseItems,
     );
     const cashMovements = mapCashMovements(
       (cashMovementsResult.data ?? []) as DbCashMovement[],
+      employeeById,
+    );
+    const cashRegisters = mapCashRegisters(
+      (cashRegistersResult.data ?? []) as DbCashRegister[],
+      employeeById,
+    );
+    const inventoryMovements = mapInventoryMovements(
+      (inventoryMovementsResult.data ?? []) as DbInventoryMovement[],
+      rawMaterialById,
+      employeeById,
+    );
+    const foodSafetyLogs = mapFoodSafetyLogs(
+      (foodSafetyLogsResult.data ?? []) as DbFoodSafetyLog[],
+      rawMaterialById,
+      employeeById,
+    );
+    const customers = mapCustomers((customersResult.data ?? []) as DbCustomer[]);
+    const customerById = new Map(customers.map((customer) => [customer.id, customer]));
+    const reservations = mapReservations(
+      (reservationsResult.data ?? []) as DbReservation[],
+      customerById,
+      tableById,
+      employeeById,
+    );
+    const customerInteractions = mapCustomerInteractions(
+      (customerInteractionsResult.data ?? []) as DbCustomerInteraction[],
+      customerById,
+      employeeById,
+    );
+    const auditLogs = mapAuditLogs(
+      (auditLogsResult.data ?? []) as DbAuditLog[],
       employeeById,
     );
 
@@ -324,8 +557,20 @@ export async function loadRestaurantSnapshot(): Promise<RestaurantSnapshot> {
       recipes: recipes.length ? recipes : demoRecipes,
       suppliers: suppliers.length ? suppliers : demoSuppliers,
       purchases: purchases.length ? purchases : demoPurchases,
+      purchaseItems: purchaseItems.length ? purchaseItems : demoPurchaseItems,
       employees: employees.length ? employees : demoEmployees,
       cashMovements: cashMovements.length ? cashMovements : demoCashMovements,
+      cashRegisters: cashRegisters.length ? cashRegisters : demoCashRegisters,
+      inventoryMovements: inventoryMovements.length
+        ? inventoryMovements
+        : demoInventoryMovements,
+      foodSafetyLogs: foodSafetyLogs.length ? foodSafetyLogs : demoFoodSafetyLogs,
+      customers: customers.length ? customers : demoCustomers,
+      reservations: reservations.length ? reservations : demoReservations,
+      customerInteractions: customerInteractions.length
+        ? customerInteractions
+        : demoCustomerInteractions,
+      auditLogs: auditLogs.length ? auditLogs : demoAuditLogs,
       reportPoints: buildReportPoints(orders),
     };
   } catch (error) {
@@ -356,10 +601,15 @@ function mapTables(rows: DbTable[]): RestaurantTable[] {
 function mapEmployees(rows: DbEmployee[]): Employee[] {
   return rows.map((row) => ({
     id: row.id,
+    userId: row.user_id ?? undefined,
     name: row.full_name,
     role: toRoleId(row.role_id),
+    rut: row.rut ?? "",
+    phone: row.phone ?? "",
     shift: row.shift ?? "Sin turno",
+    hourlyCost: toNumber(row.hourly_cost),
     status: row.status === "break" ? "break" : row.status === "offline" ? "offline" : "active",
+    hiredAt: row.hired_at ?? undefined,
     sales: 0,
     orders: 0,
   }));
@@ -490,7 +740,7 @@ function mapRecipes(
       procedure: row.procedure ?? "",
       observations: row.observations ?? "",
       targetFoodCostPercent: toNumber(row.target_food_cost_percent) || 30,
-      salePrice: product?.price ?? 0,
+      salePrice: product?.price ?? toNumber(row.reference_sale_price),
       ingredients: (ingredientsByRecipe.get(row.id) ?? []).map((ingredient) =>
         mapRecipeIngredient(ingredient, rawMaterialById),
       ),
@@ -518,6 +768,7 @@ function mapRecipeIngredient(
 function mapPurchases(
   rows: DbPurchase[],
   supplierById: Map<string, Supplier>,
+  purchaseItems: PurchaseItem[],
 ): Purchase[] {
   return rows.map((row) => {
     const supplier = row.supplier_id ? supplierById.get(row.supplier_id) : undefined;
@@ -532,6 +783,33 @@ function mapPurchases(
       total: toNumber(row.total_amount),
       status:
         row.status === "received" || row.status === "priced" ? row.status : "draft",
+      items: purchaseItems.filter((item) => item.purchaseId === row.id),
+    };
+  });
+}
+
+function mapPurchaseItems(
+  rows: DbPurchaseItem[],
+  rawMaterialById: Map<string, RawMaterial>,
+): PurchaseItem[] {
+  return rows.map((row) => {
+    const material = row.raw_material_id
+      ? rawMaterialById.get(row.raw_material_id)
+      : undefined;
+
+    return {
+      id: row.id,
+      purchaseId: row.purchase_id,
+      rawMaterialId: row.raw_material_id ?? "",
+      materialName: material?.name ?? row.description,
+      description: row.description,
+      quantity: toNumber(row.quantity),
+      unit: isUnit(row.unit) ? row.unit : material?.unit ?? "unit",
+      unitCost: toNumber(row.unit_cost),
+      yieldPercent: toNumber(row.yield_percent) || 100,
+      totalCost: toNumber(row.total_cost) || toNumber(row.quantity) * toNumber(row.unit_cost),
+      expirationDate: row.expiration_date ?? undefined,
+      lot: row.lot ?? undefined,
     };
   });
 }
@@ -556,6 +834,193 @@ function mapCashMovements(
         minute: "2-digit",
       }).format(new Date(row.created_at)),
       responsible: responsible?.name ?? "Sin responsable",
+    };
+  });
+}
+
+function mapCashRegisters(
+  rows: DbCashRegister[],
+  employeeById: Map<string, Employee>,
+): CashRegister[] {
+  return rows.map((row) => {
+    const openedBy = row.opened_by ? employeeById.get(row.opened_by) : undefined;
+    const closedBy = row.closed_by ? employeeById.get(row.closed_by) : undefined;
+
+    return {
+      id: row.id,
+      openingAmount: toNumber(row.opening_amount),
+      expectedAmount: toNumber(row.expected_amount),
+      countedAmount:
+        row.counted_amount === null ? undefined : toNumber(row.counted_amount),
+      differenceAmount:
+        row.difference_amount === null
+          ? undefined
+          : toNumber(row.difference_amount),
+      status: row.status === "closed" ? "closed" : "open",
+      openedAt: row.opened_at,
+      closedAt: row.closed_at ?? undefined,
+      openedBy: openedBy?.name ?? "Sin responsable",
+      closedBy: closedBy?.name,
+      notes: row.notes ?? undefined,
+    };
+  });
+}
+
+function mapInventoryMovements(
+  rows: DbInventoryMovement[],
+  rawMaterialById: Map<string, RawMaterial>,
+  employeeById: Map<string, Employee>,
+): InventoryMovement[] {
+  return rows.map((row) => {
+    const material = rawMaterialById.get(row.raw_material_id);
+    const responsible = row.responsible_id
+      ? employeeById.get(row.responsible_id)
+      : undefined;
+
+    return {
+      id: row.id,
+      rawMaterialId: row.raw_material_id,
+      materialName: material?.name ?? "Materia prima",
+      type: toInventoryMovementType(row.movement_type),
+      quantity: toNumber(row.quantity),
+      unitCost: toNumber(row.unit_cost),
+      reason: row.reason ?? "Movimiento de inventario",
+      responsible: responsible?.name ?? "Sin responsable",
+      time: new Intl.DateTimeFormat("es-CL", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(row.created_at)),
+      createdAt: row.created_at,
+    };
+  });
+}
+
+function mapFoodSafetyLogs(
+  rows: DbFoodSafetyLog[],
+  rawMaterialById: Map<string, RawMaterial>,
+  employeeById: Map<string, Employee>,
+): FoodSafetyLog[] {
+  return rows.map((row) => {
+    const material = row.raw_material_id
+      ? rawMaterialById.get(row.raw_material_id)
+      : undefined;
+    const responsible = row.responsible_id
+      ? employeeById.get(row.responsible_id)
+      : undefined;
+
+    return {
+      id: row.id,
+      rawMaterialId: row.raw_material_id ?? "",
+      materialName: material?.name ?? "Materia prima",
+      checkType: row.check_type,
+      measuredTemperature: row.measured_temperature ?? "Sin medicion",
+      result: toFoodSafetyResult(row.result),
+      notes: row.notes ?? "",
+      responsible: responsible?.name ?? "Sin responsable",
+      time: new Intl.DateTimeFormat("es-CL", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(row.created_at)),
+      createdAt: row.created_at,
+    };
+  });
+}
+
+function mapCustomers(rows: DbCustomer[]): Customer[] {
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.full_name,
+    phone: row.phone ?? "",
+    email: row.email ?? "",
+    documentId: row.document_id ?? "",
+    preferences: row.preferences ?? "",
+    allergies: row.allergies ?? [],
+    tags: row.tags ?? [],
+    visitCount: toNumber(row.visit_count),
+    totalSpent: toNumber(row.total_spent),
+    lastVisitAt: row.last_visit_at ?? undefined,
+    notes: row.notes ?? "",
+    createdAt: row.created_at,
+  }));
+}
+
+function mapReservations(
+  rows: DbReservation[],
+  customerById: Map<string, Customer>,
+  tableById: Map<string, RestaurantTable>,
+  employeeById: Map<string, Employee>,
+): Reservation[] {
+  return rows.map((row) => {
+    const customer = row.customer_id ? customerById.get(row.customer_id) : undefined;
+    const table = row.table_id ? tableById.get(row.table_id) : undefined;
+    const employee = row.assigned_to ? employeeById.get(row.assigned_to) : undefined;
+
+    return {
+      id: row.id,
+      customerId: row.customer_id ?? "",
+      customerName: customer?.name ?? "Cliente sin ficha",
+      customerPhone: customer?.phone ?? "",
+      tableId: row.table_id ?? undefined,
+      tableNumber: table?.number,
+      partySize: Math.max(1, toNumber(row.party_size)),
+      date: row.reservation_date,
+      time: row.reservation_time.slice(0, 5),
+      status: toReservationStatus(row.status),
+      channel: toReservationChannel(row.channel),
+      occasion: row.occasion ?? "",
+      notes: row.notes ?? "",
+      assignedTo: employee?.name,
+      createdAt: row.created_at,
+    };
+  });
+}
+
+function mapCustomerInteractions(
+  rows: DbCustomerInteraction[],
+  customerById: Map<string, Customer>,
+  employeeById: Map<string, Employee>,
+): CustomerInteraction[] {
+  return rows.map((row) => {
+    const customer = customerById.get(row.customer_id);
+    const employee = row.responsible_id
+      ? employeeById.get(row.responsible_id)
+      : undefined;
+
+    return {
+      id: row.id,
+      customerId: row.customer_id,
+      customerName: customer?.name ?? "Cliente sin ficha",
+      type: toCustomerInteractionType(row.interaction_type),
+      summary: row.summary,
+      dueAt: row.due_at ?? undefined,
+      completedAt: row.completed_at ?? undefined,
+      responsible: employee?.name ?? "Sin responsable",
+      createdAt: row.created_at,
+    };
+  });
+}
+
+function mapAuditLogs(
+  rows: DbAuditLog[],
+  employeeById: Map<string, Employee>,
+): AuditLog[] {
+  return rows.map((row) => {
+    const actor = row.actor_id ? employeeById.get(row.actor_id) : undefined;
+
+    return {
+      id: row.id,
+      action: row.action,
+      entityType: row.entity_type,
+      entityId: row.entity_id ?? undefined,
+      summary: row.summary ?? "",
+      actor: actor?.name ?? "Sistema",
+      actorRole: toRoleIdOrUndefined(row.actor_role),
+      metadata: isRecord(row.metadata) ? row.metadata : {},
+      time: new Intl.DateTimeFormat("es-CL", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(row.created_at)),
+      createdAt: row.created_at,
     };
   });
 }
@@ -617,12 +1082,13 @@ function toOrderStatus(value: string): OrderStatus {
     value === "preparing" ||
     value === "ready" ||
     value === "delivered" ||
+    value === "paid" ||
     value === "cancelled"
   ) {
     return value;
   }
 
-  return value === "paid" ? "delivered" : "pending";
+  return "pending";
 }
 
 function toRoleId(value: string): RoleId {
@@ -636,6 +1102,14 @@ function toRoleId(value: string): RoleId {
     : "administrator";
 }
 
+function toRoleIdOrUndefined(value: string | null): RoleId | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return toRoleId(value);
+}
+
 function toPaymentMethod(value: string | null): PaymentMethod | undefined {
   return value === "cash" ||
     value === "debit" ||
@@ -643,6 +1117,47 @@ function toPaymentMethod(value: string | null): PaymentMethod | undefined {
     value === "transfer"
     ? value
     : undefined;
+}
+
+function toReservationStatus(value: string): ReservationStatus {
+  if (
+    value === "pending" ||
+    value === "confirmed" ||
+    value === "seated" ||
+    value === "completed" ||
+    value === "cancelled" ||
+    value === "no_show"
+  ) {
+    return value;
+  }
+
+  return "pending";
+}
+
+function toReservationChannel(value: string | null): Reservation["channel"] {
+  return value === "phone" ||
+    value === "whatsapp" ||
+    value === "web" ||
+    value === "walk_in"
+    ? value
+    : "phone";
+}
+
+function toCustomerInteractionType(
+  value: string,
+): CustomerInteraction["type"] {
+  if (
+    value === "note" ||
+    value === "call" ||
+    value === "message" ||
+    value === "complaint" ||
+    value === "preference" ||
+    value === "follow_up"
+  ) {
+    return value;
+  }
+
+  return "note";
 }
 
 function isInventoryCategory(value: string): value is RawMaterial["category"] {
@@ -673,6 +1188,29 @@ function isCashMovementType(value: string): value is CashMovement["type"] {
   ].includes(value);
 }
 
+function toInventoryMovementType(value: string): InventoryMovement["type"] {
+  return value === "initial" ||
+    value === "purchase" ||
+    value === "sale" ||
+    value === "manual_out" ||
+    value === "adjustment" ||
+    value === "waste"
+    ? value
+    : "adjustment";
+}
+
+function toFoodSafetyResult(value: string | null): FoodSafetyLog["result"] {
+  if (value === "ok" || value === "warning" || value === "critical") {
+    return value;
+  }
+
+  return "ok";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 function groupBy<T>(items: T[], getKey: (item: T) => string) {
   const grouped = new Map<string, T[]>();
 
@@ -699,4 +1237,3 @@ const fallbackCategoryColors = [
   "bg-amber-500",
   "bg-violet-500",
 ];
-

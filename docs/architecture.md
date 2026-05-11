@@ -24,7 +24,7 @@ Esta primera etapa deja una base profesional para una plataforma gastronomica pr
 - `src/lib/costing.ts`: formulas de rendimiento, merma y costeo real.
 - `src/lib/supabase.ts`: cliente Supabase con inicializacion diferida.
 - `src/lib/data-source.ts`: lectura Supabase con fallback al dataset educativo.
-- `src/lib/realtime.ts`: suscripciones Supabase Realtime para mesas, pedidos, cocina, caja, compras e inventario.
+- `src/lib/realtime.ts`: suscripciones Supabase Realtime para mesas, trabajadores, pedidos, cocina, caja, compras, inventario, productos, recetario, seguridad alimentaria, auditoria, clientes y reservas.
 - `supabase/schema.sql`: modelo relacional base para produccion.
 - `supabase/seed.sql`: datos iniciales para pruebas academicas y comerciales.
 
@@ -42,6 +42,10 @@ Esta primera etapa deja una base profesional para una plataforma gastronomica pr
 10. Recetario tecnico.
 11. Costeo real.
 12. Reportes y dashboards.
+13. Seguridad alimentaria y bodega avanzada.
+14. Gestion avanzada de trabajadores.
+15. Auditoria transversal de acciones criticas.
+16. Clientes, reservas y CRM operativo.
 
 ## Formula de costo real
 
@@ -59,7 +63,27 @@ Ejemplo: si 1 kg de lomo cuesta $10.000 y rinde 70%, el costo real neto es $10.0
 
 La lectura real de Supabase ya esta integrada con fallback educativo. Supabase Auth tambien esta disponible en la cabecera, las acciones principales de salon, cocina y pedidos ya intentan persistir cambios reales cuando existe una sesion con permisos, y Supabase Realtime refresca automaticamente los modulos operativos publicados.
 
-La siguiente etapa recomendada es ampliar caja e inventario con mutaciones completas y mover operaciones sensibles a RPC de Supabase para descuentos atomicos de stock, cierre de caja y trazabilidad de movimientos.
+La caja ya permite apertura, cobro de cuentas presenciales, registro de propinas, retiros, adelantos, diferencias y cierre con persistencia en Supabase cuando existe sesion autorizada. Al cobrar una venta, la plataforma llama a `consume_order_inventory()` para descontar automaticamente las materias primas vinculadas por producto, receta e ingrediente.
+
+Inventario ya permite registrar mermas, salidas manuales y ajustes, y conserva trazabilidad en `inventory_movements`.
+
+Compras ya permite recepcionar facturas o boletas, insertar `purchase_items`, generar movimientos de inventario tipo `purchase`, actualizar stock, proveedor, rendimiento, lote, vencimiento y costo vigente de la materia prima mediante `receive_purchase_inventory()`. La interfaz muestra comparacion contra costo actual e historial de precios por insumo.
+
+Recetario tecnico ya permite crear y editar recetas desde la interfaz, agregar/quitar ingredientes, registrar rendimiento y merma, calcular costo neto, costo por porcion, food cost, margen, rentabilidad y precio sugerido antes de guardar. En Supabase se persiste de forma transaccional con `upsert_technical_recipe()`, reemplazando los ingredientes de la receta y manteniendo una columna `reference_sale_price` para costeo cuando no existe un producto vinculado.
+
+Productos/carta ya permite crear y editar productos desde la UI, asignar categoria, vincular receta tecnica, definir imagen, precio de venta, disponibilidad, tiempo de preparacion y opciones de personalizacion. La persistencia usa `upsert` sobre `products` y se apoya en las politicas RLS existentes para `administrator` y `chef`.
+
+Reportes y dashboards ya calculan indicadores desde datos operativos reales cargados en el snapshot: venta reconocida, margen estimado, food cost, ticket promedio, inventario valorizado, compras, caja por metodo, propinas, retiros/adelantos, diferencias de caja, productos mas/menos vendidos, rentabilidad por producto, mermas por insumo, compras por proveedor y desempeno de trabajadores. El SQL tambien expone vistas para analisis directo: `daily_sales_report`, `product_sales_report`, `inventory_valuation_report`, `cash_summary_report` y `purchase_supplier_report`.
+
+Seguridad alimentaria ya cuenta con bitacora editable de controles sanitarios (`food_safety_logs`), alertas por lote/vencimiento, control de temperaturas, checklist FIFO/LIFO, trazabilidad por materia prima y suscripcion realtime. El SQL expone `food_safety_alerts` y `food_safety_log_summary` para auditoria sanitaria y tableros externos.
+
+Gestion de trabajadores ya permite alta y edicion desde la interfaz, con rol, RUT, telefono, turno, estado operativo, fecha de ingreso, costo horario, productividad por rol y costo laboral proyectado por turno. La persistencia usa `upsert` sobre `employees`, el canal realtime escucha cambios de trabajadores y el SQL expone `employee_shift_report` para analizar ventas, caja, acciones de inventario, controles sanitarios y costo estimado.
+
+Auditoria transversal ya registra acciones criticas en `audit_logs` mediante `record_audit_log()`, enlazando actor, rol, usuario autenticado cuando existe, entidad afectada, resumen y metadata estructurada. Las operaciones principales de mesas, pedidos, comandas, caja, inventario, compras, recetas, productos, trabajadores y seguridad alimentaria intentan dejar bitacora sin bloquear la transaccion operativa si la auditoria falla. La UI incorpora un modulo de auditoria con filtros por entidad, metricas de cobertura y lectura realtime. El SQL tambien expone `audit_activity_report` para tableros externos.
+
+Clientes y reservas ya cuenta con fichas persistibles (`customers`), agenda por mesa y turno (`reservations`) y seguimientos CRM (`customer_interactions`). El modulo permite registrar preferencias, alergias, tags, historial de visitas, venta acumulada, no-shows, origen de reserva, responsable y contactos pendientes. Las reservas confirmadas pueden marcar mesas como reservadas, el canal realtime escucha cambios de CRM, y el SQL expone `customer_crm_report` y `reservation_daily_report` para tableros externos.
+
+La siguiente etapa recomendada es agregar impresion y documentos operativos: comandas imprimibles por estacion, pre-cuenta para mesa, comprobante de pago, cierre de caja imprimible y plantillas de documentos listas para integraciones tributarias o de pago.
 
 ## Politicas RLS del prototipo
 

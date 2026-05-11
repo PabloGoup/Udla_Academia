@@ -2,15 +2,25 @@ import { getSupabaseBrowserClient, isSupabaseConfigured } from "@/lib/supabase";
 
 const realtimeTables = [
   "tables",
+  "employees",
   "orders",
   "order_items",
   "kitchen_tickets",
   "products",
+  "product_categories",
+  "recipes",
+  "recipe_ingredients",
   "raw_materials",
   "inventory_movements",
+  "food_safety_logs",
+  "audit_logs",
+  "cash_registers",
   "cash_movements",
   "purchases",
   "purchase_items",
+  "customers",
+  "reservations",
+  "customer_interactions",
 ] as const;
 
 export type RestaurantRealtimeStatus =
