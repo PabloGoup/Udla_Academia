@@ -89,7 +89,7 @@ Impresion y documentos operativos ya cuenta con `operational_documents`, plantil
 
 Configuracion institucional ya usa `settings` con la clave `restaurant_profile` para nombre comercial, razon social, RUT, contacto, moneda, locale, logo institucional (`/logo.png`), cargo de servicio, impuesto referencial, horarios, series de documentos, estaciones de impresion y zonas de salon. El modulo de configuracion permite editar estos valores, la cabecera y documentos imprimibles usan el logo de la academia, y cada guardado deja auditoria `settings.upsert`.
 
-La siguiente etapa recomendada es agregar multi-sucursal: sedes, bodegas por local, cajas por sede, usuarios asignados a sede y reportes comparativos entre locales.
+La siguiente etapa recomendada es comparar el alcance actual contra el requerimiento base del proyecto y cerrar brechas prioritarias del restaurante presencial: roles docente/alumno, estados faltantes de mesas y pedidos, division y union de cuentas, pago mixto, rotacion FEFO, ejercicios docentes configurables, documentacion de uso y pruebas de capacitacion.
 
 ## Politicas RLS del prototipo
 

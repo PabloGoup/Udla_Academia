@@ -5844,7 +5844,7 @@ function DocumentsModule({
             className="mx-auto w-full max-w-[460px] rounded-lg border border-dashed border-zinc-300 bg-white p-5 font-mono text-zinc-950 shadow-sm"
           >
             <div className="border-b border-zinc-200 pb-4 text-center">
-              <div className="mx-auto mb-3 flex w-fit justify-center rounded-lg bg-zinc-950 px-3 py-2">
+              <div className="mx-auto mb-3 flex w-fit justify-center rounded-lg bg-white px-3 py-2 ring-1 ring-black/10">
                 <Image
                   src={getSafeLogoUrl(settings.logoUrl)}
                   alt={`Logo ${settings.academyName}`}
@@ -6303,7 +6303,7 @@ function SettingsModule({
       <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <Panel title="Identidad de academia" icon={Store}>
           <div className="space-y-4">
-            <div className="rounded-lg bg-zinc-950 p-4 ring-1 ring-black/10 dark:ring-white/10">
+            <div className="rounded-lg bg-white p-4 ring-1 ring-black/10 dark:ring-white/10">
               <Image
                 src={getSafeLogoUrl(draft.logoUrl)}
                 alt={`Logo ${draft.academyName}`}
