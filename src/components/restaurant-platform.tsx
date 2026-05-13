@@ -3605,10 +3605,10 @@ function RecipesModule({
         </Panel>
 
         <div className="min-w-0 space-y-4">
-          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
+          <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(320px,360px)]">
             <Panel title={selectedRecipe.name} icon={Calculator}>
-              <div className="grid min-w-0 gap-3 md:grid-cols-[240px_1fr] md:gap-4">
-                <div className="relative h-28 w-full overflow-hidden rounded-lg sm:h-40 md:h-56">
+              <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(220px,320px)_minmax(0,1fr)] lg:gap-4">
+                <div className="relative h-28 w-full overflow-hidden rounded-lg sm:h-40 lg:h-56">
                   <Image
                     src={selectedRecipe.image}
                     alt={selectedRecipe.name}
@@ -3619,18 +3619,30 @@ function RecipesModule({
                   />
                 </div>
                 <div className="min-w-0">
-                  <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 sm:gap-3 lg:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-2">
                     <InfoPill label="Porciones" value={selectedRecipe.portions.toString()} />
                     <InfoPill label="Tiempo" value={`${selectedRecipe.prepTimeMinutes} min`} />
                     <InfoPill label="Precio venta" value={formatCurrency(selectedRecipe.salePrice)} />
                     <InfoPill label="Food cost real" value={formatPercent(recipeSummary.foodCostPercent)} />
                   </div>
-                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-zinc-600 dark:text-zinc-300 sm:mt-4 sm:line-clamp-none">
-                    {selectedRecipe.procedure}
-                  </p>
-                  <p className="mt-2 line-clamp-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-900 sm:mt-3 sm:line-clamp-none sm:p-3 sm:text-sm">
-                    {selectedRecipe.observations}
-                  </p>
+                  <div className="mt-3 grid gap-2 sm:mt-4">
+                    <div className="min-w-0 rounded-lg border border-black/10 bg-zinc-50 p-3 dark:border-white/10 dark:bg-zinc-900">
+                      <p className="text-xs font-semibold uppercase text-zinc-500">
+                        Procedimiento
+                      </p>
+                      <p className="mt-1 line-clamp-3 text-sm leading-6 text-zinc-600 dark:text-zinc-300 sm:line-clamp-none">
+                        {selectedRecipe.procedure}
+                      </p>
+                    </div>
+                    <div className="min-w-0 rounded-lg bg-amber-50 p-3 text-amber-900">
+                      <p className="text-xs font-semibold uppercase text-amber-700">
+                        Observaciones
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-sm leading-6 sm:line-clamp-none">
+                        {selectedRecipe.observations}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </Panel>
