@@ -283,18 +283,33 @@ export default function PerfilAcademicoPage() {
   return (
     <main className="min-h-screen bg-white text-slate-900">
       <header className="border-b border-orange-100 bg-white text-slate-950 shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ea5b0c] text-white">
-              <GraduationCap size={28} />
-            </div>
+          <Link
+
+                href="/academico"
+                aria-label="Volver al inicio académico"
+                title="Volver al inicio"
+                className="group flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#ea5b0c] text-white shadow-md shadow-orange-900/20 transition duration-200 hover:-translate-y-0.5 hover:scale-105 hover:bg-[#cf4f08] hover:shadow-lg active:scale-95 sm:h-12 sm:w-12">
+                <GraduationCap
+                size={28}
+                className="transition duration-200 group-hover:-rotate-6 group-hover:scale-110"/>
+                </Link>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#ea5b0c]">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ea5b0c] sm:text-xs sm:tracking-[0.25em]">
                 Universidad de Las Américas
               </p>
-              <h1 className="text-2xl font-black tracking-tight">Mi Perfil</h1>
+              <h1 className="text-xl font-black tracking-tight sm:text-2xl">Mi Perfil</h1>
             </div>
           </div>
+
+          <Link
+            className="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-black uppercase tracking-wide text-[#ea5b0c] transition hover:bg-orange-100 lg:hidden"
+            href="/academico"
+          >
+            <Home size={18} />
+
+          </Link>
 
           <nav className="hidden items-center gap-8 text-sm font-medium text-neutral-700 lg:flex">
             <Link className="flex flex-col items-center gap-1 hover:text-[#ea5b0c]" href="/academico">
