@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { GraduationCap, RefreshCw, Utensils, UsersRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -18,6 +19,12 @@ import { PanelMessage } from "@/components/academic/academic-ui";
 import { StudentActivityPanel } from "@/components/academic/student-activity-panel";
 import { StudentOverview } from "@/components/academic/student-overview";
 import { StudentWorkflowPanel } from "@/components/academic/student-workflow-panel";
+import {
+  getRoleSimulation,
+  isRoleSimulation,
+  ROLE_SIMULATION_OPTIONS,
+  type RoleSimulation,
+} from "@/lib/role-simulation";
 
 type StudentDashboardState = "loading" | "ready" | "empty" | "error";
 type StudentRoleOption = {
@@ -31,11 +38,13 @@ function isUuid(value: string) {
 }
 
 export function StudentAcademicDashboard() {
+  const router = useRouter();
   const [state, setState] = useState<StudentDashboardState>("loading");
   const [panel, setPanel] = useState<PanelAlumnoAcademico | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [roleOptions, setRoleOptions] = useState<StudentRoleOption[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [simulatedRole, setSimulatedRole] = useState<RoleSimulation>("alumno");
 
   const loadPanel = useCallback(async (targetProfileId?: string) => {
     setState("loading");
@@ -81,6 +90,13 @@ export function StudentAcademicDashboard() {
   }, []);
 
   useEffect(() => {
+    const savedRole = localStorage.getItem("udla-role-sim");
+    if (isRoleSimulation(savedRole)) {
+      setSimulatedRole(savedRole);
+    }
+  }, []);
+
+  useEffect(() => {
     loadPanel()
       .then(() => undefined)
       .catch(() => undefined);
@@ -108,6 +124,14 @@ export function StudentAcademicDashboard() {
     [panel],
   );
   const tasks = useMemo(() => (panel ? buildStudentTasks(panel) : []), [panel]);
+
+  const switchSimulatedRole = (roleId: RoleSimulation) => {
+    setSimulatedRole(roleId);
+    localStorage.setItem("udla-role-sim", roleId);
+    const role = getRoleSimulation(roleId);
+    if (!role) return;
+    router.push(role.defaultRoute);
+  };
 
   return (
     <main className="min-h-screen bg-white text-slate-100">
@@ -152,15 +176,8 @@ export function StudentAcademicDashboard() {
               Actualizar
             </button>
             <Link
-              href="/academico"
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-black/15 bg-black/5 px-3 text-sm font-medium text-black transition hover:border-black/25 hover:bg-black/10"
-            >
-              <GraduationCap className="h-4 w-4" />
-              Docente
-            </Link>
-            <Link
               href="/"
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-orange-400 px-3 text-sm font-semibold text-white transition hover:bg-orange-800"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-black/15 bg-black/5 px-3 text-sm font-medium text-black transition hover:border-black/25 hover:bg-black/10"
             >
               <Utensils className="h-4 w-4" />
               Operacion
@@ -168,6 +185,32 @@ export function StudentAcademicDashboard() {
           </div>
     
         </header>
+
+        <section className="rounded-xl border border-black/10 bg-black/[0.03] p-3">
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-orange-600">
+            <GraduationCap className="h-4 w-4" />
+            Simulacion de rol (maestro)
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            {ROLE_SIMULATION_OPTIONS.map((roleOption) => {
+              const active = roleOption.id === simulatedRole;
+              return (
+                <button
+                  key={roleOption.id}
+                  type="button"
+                  onClick={() => switchSimulatedRole(roleOption.id)}
+                  className={`col-span-2 rounded-lg border px-3 py-2 text-left text-xs font-bold uppercase tracking-wide transition sm:col-span-1 ${
+                    active
+                      ? "border-orange-500 bg-orange-500 text-white shadow-md shadow-orange-600/20"
+                      : "border-black/10 bg-black/[0.02] text-black hover:border-orange-600/40 hover:bg-black/[0.06]"
+                  }`}
+                >
+                  {roleOption.label}
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
         {state === "ready" && roleOptions.length > 0 ? (
           <section className="rounded-xl border border-black/10 bg-black/[0.03] p-3">

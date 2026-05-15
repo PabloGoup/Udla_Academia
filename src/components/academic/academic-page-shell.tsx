@@ -5,10 +5,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpen,
+  BookCopy,
   GraduationCap,
   LayoutDashboard,
   Package,
   MonitorPlay,
+  UtensilsCrossed,
   Sparkles,
   UserRound,
   Users,
@@ -18,6 +20,7 @@ import {
   ShieldCheck,
   Wallet,
   ShoppingCart,
+  QrCode,
   UserCog,
   Shield,
   Settings,
@@ -36,12 +39,21 @@ import {
   signOutOperator,
   type AuthProfile,
 } from "@/lib/operations";
+import {
+  getRoleSimulation,
+  isRoleSimulation,
+  ROLE_SIMULATION_OPTIONS,
+  type RoleSimulation,
+} from "@/lib/role-simulation";
 
 const navItems = [
   { href: "/academico", label: "Dashboard", icon: LayoutDashboard },
   { href: "/academico/cursos", label: "Cursos", icon: BookOpen },
   { href: "/academico/alumnos", label: "Alumnos", icon: Users },
   { href: "/academico/simulaciones", label: "Simulaciones", icon: Sparkles },
+  { href: "/academico/recetas", label: "Recetas", icon: BookOpen },
+  { href: "/academico/sub-recetas", label: "Sub-recetas", icon: BookCopy },
+  { href: "/academico/menu", label: "Menú", icon: UtensilsCrossed },
   { href: "/academico/bodega", label: "Bodega", icon: Package },
   { href: "/academico/inventario", label: "Inventario", icon: ClipboardList },
   { href: "/academico/compras", label: "Compras", icon: ShoppingCart },
@@ -53,6 +65,7 @@ const navItems = [
   { href: "/academico/inocuidad", label: "Inocuidad", icon: ShieldCheck },
   { href: "/academico/personal", label: "Personal", icon: UserCog },
   { href: "/academico/auditoria", label: "Auditoría", icon: Shield },
+  { href: "/academico/qr", label: "QR Comensal", icon: QrCode },
   { href: "/academico/configuracion", label: "Configuración", icon: Settings },
   { href: "/academico/alumno", label: "Portal alumno", icon: UserRound },
 ] as const;
@@ -63,40 +76,6 @@ interface AcademicPageShellProps {
   children: ReactNode;
 }
 
-type RoleSimulation = "master" | "administrador" | "docente" | "alumno";
-
-const roleSimulationOptions: Array<{
-  id: RoleSimulation;
-  label: string;
-  description: string;
-  defaultRoute: string;
-}> = [
-    {
-      id: "master",
-      label: "Maestro",
-      description: "Visión total de módulos, permisos y configuración.",
-      defaultRoute: "/academico",
-    },
-    {
-      id: "administrador",
-      label: "Administrador",
-      description: "Control institucional, cursos, perfiles y operación.",
-      defaultRoute: "/academico",
-    },
-    {
-      id: "docente",
-      label: "Docente",
-      description: "Gestión de clases, simulaciones, evaluación y seguimiento.",
-      defaultRoute: "/academico",
-    },
-    {
-      id: "alumno",
-      label: "Alumno",
-      description: "Portal del alumno con rol, tareas y trazabilidad.",
-      defaultRoute: "/academico/alumno",
-    },
-  ];
-
 const navByRole: Record<RoleSimulation, ReadonlyArray<(typeof navItems)[number]>> = {
   master: navItems,
   administrador: navItems.filter((item) => item.href !== "/academico/alumno"),
@@ -106,6 +85,10 @@ const navByRole: Record<RoleSimulation, ReadonlyArray<(typeof navItems)[number]>
       "/academico/cursos",
       "/academico/alumnos",
       "/academico/simulaciones",
+      "/academico/recetas",
+      "/academico/sub-recetas",
+      "/academico/menu",
+      "/academico/qr",
       "/academico/reportes",
       "/academico/alumno",
     ].includes(item.href),
@@ -132,8 +115,7 @@ export function AcademicPageShell({
   const [operationNotice, setOperationNotice] = useState<{ tone: "success" | "warning"; message: string } | null>(null);
   const supabaseReady = isSupabaseConfigured();
   const activeRoleSimulation =
-    roleSimulationOptions.find((role) => role.id === simulatedRole) ??
-    roleSimulationOptions[0];
+    getRoleSimulation(simulatedRole) ?? ROLE_SIMULATION_OPTIONS[0];
   const availableNavItems = navByRole[simulatedRole] ?? navByRole.master;
 
   useEffect(() => {
@@ -141,11 +123,8 @@ export function AcademicPageShell({
     const saved = localStorage.getItem("udla-theme");
     if (saved === "dark") setDarkMode(true);
 
-    const savedRole = localStorage.getItem("udla-role-sim") as RoleSimulation | null;
-    if (
-      savedRole &&
-      roleSimulationOptions.some((role) => role.id === savedRole)
-    ) {
+    const savedRole = localStorage.getItem("udla-role-sim");
+    if (isRoleSimulation(savedRole)) {
       setSimulatedRole(savedRole);
     }
 
@@ -200,7 +179,7 @@ export function AcademicPageShell({
   const switchSimulatedRole = (roleId: RoleSimulation) => {
     setSimulatedRole(roleId);
     localStorage.setItem("udla-role-sim", roleId);
-    const role = roleSimulationOptions.find((option) => option.id === roleId);
+    const role = getRoleSimulation(roleId);
     if (!role) return;
     if (!pathname.startsWith(role.defaultRoute)) {
       router.push(role.defaultRoute);
@@ -418,7 +397,7 @@ export function AcademicPageShell({
               </div>
 
               <div className="grid grid-cols-4 gap-2 ">
-                {roleSimulationOptions.map((roleOption) => {
+                {ROLE_SIMULATION_OPTIONS.map((roleOption) => {
                   const active = roleOption.id === simulatedRole;
                   return (
                     <button

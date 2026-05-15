@@ -248,6 +248,7 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   maxWidth?: string;
+  bodyClassName?: string;
 }
 
 export function Modal({
@@ -256,6 +257,7 @@ export function Modal({
   title,
   children,
   maxWidth = "max-w-lg",
+  bodyClassName = "",
 }: ModalProps) {
   if (!open) return null;
 
@@ -280,7 +282,7 @@ export function Modal({
             </svg>
           </button>
         </div>
-        <div className="max-h-[80vh] overflow-y-auto px-6 py-6">
+        <div className={`max-h-[80vh] overflow-y-auto px-6 py-6 ${bodyClassName}`}>
           {children}
         </div>
       </div>
