@@ -485,32 +485,88 @@ export function AcademicPageShell({
             {children}
           </main>
 
-          <footer className="border-t-4 border-[var(--udla-orange)] bg-[#252525] px-4 py-5 text-white sm:px-8">
-            <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-medium text-white/80">
-                <Link
-                  href="https://www.udla.cl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 transition hover:text-white"
-                >
-                  <Building2 className="h-4 w-4 text-white/70" />
-                  Página de la institución
-                </Link>
-                <Link
-                  href="/academico/perfil"
-                  className="inline-flex items-center gap-2 transition hover:text-white"
-                >
-                  <Globe2 className="h-4 w-4 text-white/70" />
-                  Actividad
-                </Link>
+          <footer className=" bg-[#202020] text-white shadow-[0_-18px_45px_rgba(15,23,42,0.12)] dark:bg-[#070b11]">
+            <div className="mx-auto w-full max-w-[1600px] px-3 py-3 sm:px-8 sm:py-6 lg:py-7">
+              <div className="grid gap-3 sm:gap-6 lg:grid-cols-[1.2fr_1fr_1fr] lg:items-start">
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--udla-orange)] text-white shadow-lg shadow-orange-950/20 sm:h-11 sm:w-11 sm:rounded-2xl">
+                      <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black uppercase tracking-[0.16em] text-orange-300 sm:text-[10px] sm:tracking-[0.22em]">
+                        UDLA Academia Gastronómica
+                      </p>
+                      <h2 className="text-sm font-black leading-tight tracking-tight text-white sm:text-lg">
+                        Plataforma académica operacional
+                      </h2>
+                    </div>
+                  </div>
+                  <p className="max-w-xl text-[11px] font-medium leading-snug text-white/55 sm:text-sm sm:leading-relaxed">
+                    Simulación, trazabilidad y control académico integrados en un solo entorno.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-[8px] font-black uppercase tracking-[0.16em] text-white/35 sm:mb-3 sm:text-[10px] sm:tracking-[0.22em]">
+                    Accesos rápidos
+                  </p>
+                  <div className="grid grid-cols-3 gap-1.5 text-[10px] font-semibold rounded-xl sm:rounded-xl text-white/70 sm:grid-cols-2 sm:gap-2 sm:text-sm lg:grid-cols-1">
+                    <Link
+                      href="/academico"
+                      className="inline-flex min-w-0 items-center justify-center gap-1   rounded-xl sm:rounded-xl px-2 py-1.5 text-center leading-tight transition hover:-translate-y-0.5 hover:border-orange-400/50 hover:bg-orange-500/10 hover:text-white sm:justify-start sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2"
+                    >
+                      <LayoutDashboard className="h-3.5 w-3.5 shrink-0 text-orange-300 sm:h-4 sm:w-4" />
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/academico/perfil"
+                      className="inline-flex min-w-0 items-center justify-center gap-1 px-2 py-1.5  rounded-xl sm:rounded-xl text-center leading-tight transition hover:-translate-y-0.5 hover:border-orange-400/50 hover:bg-orange-500/10 hover:text-white sm:justify-start sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2"
+                    >
+                      <UserRound className="h-3.5 w-3.5 shrink-0 text-orange-300 sm:h-4 sm:w-4" />
+                      Mi perfil
+                    </Link>
+                    <Link
+                      href="https://www.udla.cl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-w-0 items-center justify-center gap-1  px-2 py-1.5  rounded-xl sm:rounded-xl text-center leading-tight transition hover:-translate-y-0.5 hover:border-orange-400/50 hover:bg-orange-500/10 hover:text-white sm:justify-start sm:gap-2 sm:rounded-xl sm:px-3 sm:py-2"
+                    >
+                      <Globe2 className="h-3.5 w-3.5 shrink-0 text-orange-300 sm:h-4 sm:w-4" />
+                      Sitio UDLA
+                    </Link>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-[8px] font-black uppercase tracking-[0.16em] text-white/35 sm:mb-3 sm:text-[10px] sm:tracking-[0.22em]">
+                    Estado del sistema
+                  </p>
+                  <div className=" p-2.5 sm:rounded-2xl sm:p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-black text-white sm:text-sm">GoUp Soluciones IT & RPA</p>
+                        <p className="mt-0.5 text-[9px] font-semibold text-white/45 sm:mt-1 sm:text-xs">v.07 · entorno académico</p>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-[8px] font-black uppercase tracking-wide text-emerald-300 ring-1 ring-emerald-400/20 sm:gap-2 sm:px-3 sm:text-[10px]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        Activo
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-semibold text-white/40 sm:mt-4 sm:text-[11px]">
+                      <span>Privacidad</span>
+                      <span className="text-white/20">•</span>
+                      <span>Condiciones</span>
+                      <span className="text-white/20">•</span>
+                      <span>Accesibilidad</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-white/50">
-                <span>Privacidad</span>
-                <span>•</span>
-                <span>Condiciones</span>
-                <span>•</span>
-                <span>Accesibilidad</span>
+
+              <div className="mt-3 flex gap-1 justify-center  border-t border-white/10 pt-2.5 text-[9px] font-semibold  text-white/35 sm:mt-6  sm:justify-center sm:pt-4 sm:text-xs">
+                <span className=" justify-center">© 2026 UDLA Academia Gastronómica.</span>
+               
               </div>
             </div>
           </footer>
