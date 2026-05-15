@@ -1,35 +1,7 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-
-let browserClient: SupabaseClient | null = null;
-
-export function isSupabaseConfigured() {
-  if (process.env.NEXT_PUBLIC_USE_DEMO_DATA === "true") return false;
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      getSupabasePublishableKey(),
-  );
-}
-
-function getSupabasePublishableKey() {
-  return (
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-}
-
-export function getSupabaseBrowserClient() {
-  if (!isSupabaseConfigured()) {
-    throw new Error(
-      "Supabase no esta configurado. Define NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.",
-    );
-  }
-
-  if (!browserClient) {
-    browserClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      getSupabasePublishableKey()!,
-    );
-  }
-
-  return browserClient;
-}
+export {
+  getSupabasePublishableKey,
+  getSupabaseUrl,
+  isDemoAccessEnabled,
+  isSupabaseConfigured,
+} from "@/lib/supabase/env";
+export { getSupabaseBrowserClient } from "@/lib/supabase/browser";

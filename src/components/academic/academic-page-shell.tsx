@@ -41,6 +41,12 @@ import {
   type AuthProfile,
 } from "@/lib/operations";
 import {
+  obtenerPerfilAcademicoSesion,
+  resolverRolNavegacion,
+} from "@/lib/academic-auth";
+import { puede } from "@/lib/academic-permissions";
+import type { PerfilAcademico } from "@/lib/academic-types";
+import {
   getRoleSimulation,
   isRoleSimulation,
   ROLE_SIMULATION_OPTIONS,
@@ -50,6 +56,7 @@ import {
 const navItems = [
   { href: "/academico", label: "Dashboard", icon: LayoutDashboard },
   { href: "/academico/cursos", label: "Cursos", icon: BookOpen },
+  { href: "/academico/usuarios", label: "Usuarios", icon: UserCog },
   { href: "/academico/alumnos", label: "Alumnos", icon: Users },
   { href: "/academico/simulaciones", label: "Simulaciones", icon: Sparkles },
   { href: "/academico/recetas", label: "Recetas", icon: BookOpen },
@@ -89,6 +96,18 @@ function getInitials(name?: string | null) {
     .toUpperCase();
 }
 
+function filterNavForAcademicRole(
+  items: ReadonlyArray<(typeof navItems)[number]>,
+  rol?: import("@/lib/academic-types").RolUsuario | null,
+) {
+  return items.filter((item) => {
+    if (item.href === "/academico/usuarios") {
+      return puede(rol ?? null, "usuarios.gestionar");
+    }
+    return true;
+  });
+}
+
 const navByRole: Record<RoleSimulation, ReadonlyArray<(typeof navItems)[number]>> = {
   master: navItems,
   administrador: navItems.filter((item) => item.href !== "/academico/alumno"),
@@ -121,9 +140,11 @@ export function AcademicPageShell({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [desktopSidebarHovered, setDesktopSidebarHovered] = useState(false);
-  const [simulatedRole, setSimulatedRole] = useState<RoleSimulation>("master");
+  const [simulatedRole, setSimulatedRole] = useState<RoleSimulation>("docente");
+  const [academicProfile, setAcademicProfile] = useState<PerfilAcademico | null>(null);
   const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null);
   const [authState, setAuthState] = useState<"anonymous" | "checking" | "authenticated">("anonymous");
+  const [roleResolved, setRoleResolved] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authOpen, setAuthOpen] = useState(false);
@@ -131,7 +152,11 @@ export function AcademicPageShell({
   const supabaseReady = isSupabaseConfigured();
   const activeRoleSimulation =
     getRoleSimulation(simulatedRole) ?? ROLE_SIMULATION_OPTIONS[0];
-  const availableNavItems = navByRole[simulatedRole] ?? navByRole.master;
+  const baseNavItems = navByRole[simulatedRole] ?? navByRole.docente;
+  const availableNavItems =
+    supabaseReady && !roleResolved
+      ? []
+      : filterNavForAcademicRole(baseNavItems, academicProfile?.rol_academico ?? null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -143,12 +168,25 @@ export function AcademicPageShell({
       setSimulatedRole(savedRole);
     }
 
-    if (supabaseReady) {
-      getCurrentAuthProfile().then((profile) => {
-        setAuthProfile(profile);
-        setAuthState(profile ? "authenticated" : "anonymous");
-      });
+    async function bootstrapSession() {
+      if (!supabaseReady) {
+        setRoleResolved(true);
+        return;
+      }
+      const profile = await getCurrentAuthProfile();
+      const perfil = await obtenerPerfilAcademicoSesion();
+      setAuthProfile(profile);
+      setAcademicProfile(perfil);
+      setAuthState(profile ? "authenticated" : "anonymous");
+      if (profile || perfil) {
+        setSimulatedRole(resolverRolNavegacion(perfil, profile));
+      } else if (isRoleSimulation(savedRole)) {
+        setSimulatedRole(savedRole);
+      }
+      setRoleResolved(true);
     }
+
+    void bootstrapSession();
   }, [supabaseReady]);
 
   async function handleSignIn(event: FormEvent<HTMLFormElement>) {
@@ -161,8 +199,13 @@ export function AcademicPageShell({
       message: result.message,
     });
 
+    const perfil = await obtenerPerfilAcademicoSesion();
     setAuthProfile(profile);
+    setAcademicProfile(perfil);
     setAuthState(profile ? "authenticated" : "anonymous");
+    if (profile || perfil) {
+      setSimulatedRole(resolverRolNavegacion(perfil, profile));
+    }
 
     if (profile) {
       setAuthOpen(false);
@@ -177,7 +220,14 @@ export function AcademicPageShell({
       message: result.message,
     });
     setAuthProfile(null);
+    setAcademicProfile(null);
     setAuthState("anonymous");
+    document.cookie = "udla-demo=; path=/; max-age=0; SameSite=Lax";
+    const savedRole = localStorage.getItem("udla-role-sim");
+    if (isRoleSimulation(savedRole)) {
+      setSimulatedRole(savedRole);
+    }
+    router.replace("/");
   }
 
   const toggleTheme = () => {
@@ -445,24 +495,31 @@ export function AcademicPageShell({
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-2 ">
-                {ROLE_SIMULATION_OPTIONS.map((roleOption) => {
-                  const active = roleOption.id === simulatedRole;
-                  return (
-                    <button
-                      key={roleOption.id}
-                      type="button"
-                      onClick={() => switchSimulatedRole(roleOption.id)}
-                      className={`col-span-2 rounded-lg border px-3 py-2 text-left text-xs font-bold uppercase tracking-wide transition sm:col-span-1 ${active
-                        ? "border-[var(--udla-orange)] bg-[var(--udla-orange)] text-white shadow-md shadow-orange-500/20"
-                        : "border-slate-200 bg-white text-slate-600 hover:border-orange-200 hover:text-orange-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-orange-500/50"
-                        }`}
-                    >
-                      {roleOption.label}
-                    </button>
-                  );
-                })}
-              </div>
+              {authState === "authenticated" && academicProfile ? (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold uppercase tracking-wide text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100">
+                  Sesión: {academicProfile.nombre_completo} · Rol{" "}
+                  {academicProfile.rol_academico} · Vista {activeRoleSimulation.label}
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 gap-2 ">
+                  {ROLE_SIMULATION_OPTIONS.map((roleOption) => {
+                    const active = roleOption.id === simulatedRole;
+                    return (
+                      <button
+                        key={roleOption.id}
+                        type="button"
+                        onClick={() => switchSimulatedRole(roleOption.id)}
+                        className={`col-span-2 rounded-lg border px-3 py-2 text-left text-xs font-bold uppercase tracking-wide transition sm:col-span-1 ${active
+                          ? "border-[var(--udla-orange)] bg-[var(--udla-orange)] text-white shadow-md shadow-orange-500/20"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-orange-200 hover:text-orange-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-orange-500/50"
+                          }`}
+                      >
+                        {roleOption.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
             </div>
           </header>

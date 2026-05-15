@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Calculator, CircleDollarSign, Receipt } from "lucide-react";
-import { loadRestaurantSnapshot, type RestaurantSnapshot } from "@/lib/data-source";
+import { useRestaurantSnapshot } from "@/lib/hooks/use-restaurant-snapshot";
 import {
   persistCashRegisterClose,
   persistCashRegisterOpen,
@@ -19,25 +19,11 @@ import {
 } from "@/components/ui/academic-ui-kit";
 
 export function CashOperationsPanel() {
-  const [snapshot, setSnapshot] = useState<RestaurantSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { snapshot, loading, refresh } = useRestaurantSnapshot();
   const [openingAmount, setOpeningAmount] = useState("0");
   const [countedAmount, setCountedAmount] = useState("");
   const [closing, setClosing] = useState(false);
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      setSnapshot(await loadRestaurantSnapshot());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   const openRegister = useMemo(
     () => snapshot?.cashRegisters.find((register) => register.status === "open"),

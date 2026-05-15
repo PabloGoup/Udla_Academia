@@ -23,6 +23,13 @@ const realtimeTables = [
   "customer_interactions",
   "operational_documents",
   "settings",
+  "simulaciones",
+  "areas_simulacion",
+  "roles_simulacion",
+  "trazabilidad_academica",
+  "feedback_comensal",
+  "evaluaciones",
+  "imprevistos_simulacion",
 ] as const;
 
 export type RestaurantRealtimeStatus =

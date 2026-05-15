@@ -113,27 +113,19 @@ create table if not exists public.users (
   updated_at timestamptz not null default now()
 );
 
-create or replace function public.current_app_role()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select coalesce(
-    auth.jwt() ->> 'user_role',
-    auth.jwt() -> 'app_metadata' ->> 'role',
-    (select role_id::text from public.users where id = auth.uid()),
-    'anonymous'
-  );
-$$;
-
-create or replace function public.role_from_auth_metadata(raw_role text)
+create or replace function public.app_role_from_auth_metadata(
+  raw_role text,
+  raw_academic_role text default null
+)
 returns public.app_role
 language sql
 immutable
 as $$
   select case
+    when raw_role in ('master', 'maestro', 'root', 'superadmin') then 'master'::public.app_role
+    when raw_academic_role = 'administrador' then 'administrator'::public.app_role
+    when raw_academic_role = 'profesor' then 'supervisor'::public.app_role
+    when raw_academic_role in ('alumno', 'comensal') then 'waiter'::public.app_role
     when raw_role in (
       'master',
       'administrator',
@@ -144,8 +136,48 @@ as $$
       'chef',
       'warehouse'
     ) then raw_role::public.app_role
+    when raw_role = 'administrador' then 'administrator'::public.app_role
+    when raw_role in ('profesor', 'docente', 'teacher') then 'supervisor'::public.app_role
+    when raw_role in ('alumno', 'student', 'comensal') then 'waiter'::public.app_role
     else 'waiter'::public.app_role
   end;
+$$;
+
+create or replace function public.current_app_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    case
+      when auth.jwt() ? 'user_role'
+        or auth.jwt() ? 'academic_role'
+        then public.app_role_from_auth_metadata(
+          auth.jwt() ->> 'user_role',
+          auth.jwt() ->> 'academic_role'
+        )::text
+    end,
+    case
+      when auth.jwt() -> 'app_metadata' ? 'role'
+        or auth.jwt() -> 'app_metadata' ? 'academic_role'
+        then public.app_role_from_auth_metadata(
+          auth.jwt() -> 'app_metadata' ->> 'role',
+          auth.jwt() -> 'app_metadata' ->> 'academic_role'
+        )::text
+    end,
+    (select role_id::text from public.users where id = auth.uid()),
+    'anonymous'
+  );
+$$;
+
+create or replace function public.role_from_auth_metadata(raw_role text)
+returns public.app_role
+language sql
+immutable
+as $$
+  select public.app_role_from_auth_metadata(raw_role, null);
 $$;
 
 create or replace function public.handle_auth_user_profile()
@@ -158,7 +190,10 @@ begin
   insert into public.users (id, role_id, full_name, email)
   values (
     new.id,
-    public.role_from_auth_metadata(new.raw_app_meta_data ->> 'role'),
+    public.app_role_from_auth_metadata(
+      new.raw_app_meta_data ->> 'role',
+      new.raw_app_meta_data ->> 'academic_role'
+    ),
     coalesce(new.raw_user_meta_data ->> 'full_name', split_part(new.email, '@', 1), 'Operador'),
     new.email
   )
@@ -166,7 +201,9 @@ begin
   set email = excluded.email,
       full_name = excluded.full_name,
       role_id = case
-        when new.raw_app_meta_data ? 'role' then excluded.role_id
+        when new.raw_app_meta_data ? 'role'
+          or new.raw_app_meta_data ? 'academic_role'
+          then excluded.role_id
         else public.users.role_id
       end,
       updated_at = now();
@@ -190,6 +227,7 @@ as $$
 declare
   profile public.users%rowtype;
   jwt_role text;
+  jwt_academic_role text;
   jwt_email text;
   jwt_name text;
 begin
@@ -198,6 +236,7 @@ begin
   end if;
 
   jwt_role := auth.jwt() -> 'app_metadata' ->> 'role';
+  jwt_academic_role := auth.jwt() -> 'app_metadata' ->> 'academic_role';
   jwt_email := coalesce(auth.jwt() ->> 'email', '');
   jwt_name := coalesce(
     auth.jwt() -> 'user_metadata' ->> 'full_name',
@@ -208,13 +247,17 @@ begin
   insert into public.users (id, role_id, full_name, email)
   values (
     auth.uid(),
-    public.role_from_auth_metadata(jwt_role),
+    public.app_role_from_auth_metadata(jwt_role, jwt_academic_role),
     jwt_name,
     jwt_email
   )
   on conflict (id) do update
   set email = excluded.email,
       full_name = excluded.full_name,
+      role_id = case
+        when jwt_role is not null or jwt_academic_role is not null then excluded.role_id
+        else public.users.role_id
+      end,
       updated_at = now()
   returning * into profile;
 

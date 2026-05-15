@@ -5,6 +5,7 @@ import type {
   Usuario,
   Seccion,
 } from "@/lib/academic-types";
+import { obtenerIdProfesorSesion } from "@/lib/academic-auth";
 import {
   demoCursos,
   demoSecciones,
@@ -81,11 +82,13 @@ export async function crearCurso(draft: CursoDraft): Promise<ResultadoMutacion> 
   if (!draft.nombre_curso.trim()) return { ok: false, mensaje: "El nombre del curso es obligatorio." };
   if (!draft.asignatura.trim()) return { ok: false, mensaje: "La asignatura es obligatoria." };
 
+  const idProfesor = draft.id_profesor || (await obtenerIdProfesorSesion());
+
   if (!isSupabaseConfigured()) {
     const id = nextId("curso");
     localCursos.push({
       id_curso: id,
-      id_profesor: draft.id_profesor,
+      id_profesor: idProfesor,
       nombre_curso: draft.nombre_curso.trim(),
       asignatura: draft.asignatura.trim(),
       seccion: draft.seccion,
@@ -105,7 +108,7 @@ export async function crearCurso(draft: CursoDraft): Promise<ResultadoMutacion> 
       asignatura: draft.asignatura.trim(),
       codigo_curso: draft.codigo_curso ?? null,
       periodo: draft.periodo ?? null,
-      id_profesor: draft.id_profesor,
+      id_profesor: idProfesor,
       estado: "activo",
     })
     .select("id_curso")
@@ -167,6 +170,47 @@ export async function listarSecciones(id_curso?: string): Promise<Seccion[]> {
   }));
 }
 
+export interface SeccionDraft {
+  id_curso: string;
+  nombre_seccion: string;
+  jornada?: string;
+  cupo?: number;
+}
+
+export async function crearSeccion(draft: SeccionDraft): Promise<ResultadoMutacion> {
+  if (!draft.nombre_seccion.trim()) {
+    return { ok: false, mensaje: "El nombre de la sección es obligatorio." };
+  }
+
+  if (!isSupabaseConfigured()) {
+    const id = nextId("sec");
+    localSecciones.push({
+      id_seccion: id,
+      id_curso: draft.id_curso,
+      nombre_seccion: draft.nombre_seccion.trim(),
+      jornada: draft.jornada,
+      cupo: draft.cupo ?? 0,
+      estado: "activa",
+    });
+    return { ok: true, mensaje: "Sección creada (demo).", id };
+  }
+
+  const { data, error } = await getSupabaseBrowserClient()
+    .from("secciones")
+    .insert({
+      id_curso: draft.id_curso,
+      nombre_seccion: draft.nombre_seccion.trim(),
+      jornada: draft.jornada?.trim() || null,
+      cupo: draft.cupo ?? 0,
+      estado: "activa",
+    })
+    .select("id_seccion")
+    .single();
+
+  if (error) return { ok: false, mensaje: error.message };
+  return { ok: true, mensaje: "Sección creada.", id: data.id_seccion };
+}
+
 /* ───────────────── Clases ───────────────── */
 
 export async function listarClases(id_curso?: string): Promise<Clase[]> {
@@ -194,6 +238,57 @@ export async function listarClases(id_curso?: string): Promise<Clase[]> {
     objetivo: r.objetivo ?? "",
     estado: r.estado as string,
   }));
+}
+
+export interface ClaseDraft {
+  id_curso: string;
+  id_seccion?: string;
+  nombre_clase: string;
+  fecha: string;
+  objetivo?: string;
+  tipo_servicio?: string;
+}
+
+export async function crearClase(draft: ClaseDraft): Promise<ResultadoMutacion> {
+  if (!draft.nombre_clase.trim()) {
+    return { ok: false, mensaje: "El nombre de la clase es obligatorio." };
+  }
+  if (!draft.fecha.trim()) {
+    return { ok: false, mensaje: "La fecha de la clase es obligatoria." };
+  }
+
+  const idProfesor = await obtenerIdProfesorSesion();
+
+  if (!isSupabaseConfigured()) {
+    const id = nextId("clase");
+    localClases.push({
+      id_clase: id,
+      id_curso: draft.id_curso,
+      nombre_clase: draft.nombre_clase.trim(),
+      fecha: draft.fecha,
+      objetivo: draft.objetivo?.trim() ?? "",
+      estado: "planificada",
+    });
+    return { ok: true, mensaje: "Clase creada (demo).", id };
+  }
+
+  const { data, error } = await getSupabaseBrowserClient()
+    .from("clases")
+    .insert({
+      id_curso: draft.id_curso,
+      id_seccion: draft.id_seccion ?? null,
+      id_profesor: idProfesor,
+      nombre_clase: draft.nombre_clase.trim(),
+      fecha: draft.fecha,
+      objetivo: draft.objetivo?.trim() ?? "",
+      tipo_servicio: draft.tipo_servicio?.trim() ?? "",
+      estado: "planificada",
+    })
+    .select("id_clase")
+    .single();
+
+  if (error) return { ok: false, mensaje: error.message };
+  return { ok: true, mensaje: "Clase creada.", id: data.id_clase };
 }
 
 /* ───────────────── Usuarios (Alumnos) ───────────────── */

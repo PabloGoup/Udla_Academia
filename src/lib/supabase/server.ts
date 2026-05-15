@@ -1,0 +1,28 @@
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { getSupabasePublishableKey, getSupabaseUrl, isSupabaseConfigured } from "@/lib/supabase/env";
+
+export async function createSupabaseServerClient() {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase no esta configurado.");
+  }
+
+  const cookieStore = await cookies();
+
+  return createServerClient(getSupabaseUrl(), getSupabasePublishableKey(), {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll();
+      },
+      setAll(cookiesToSet: { name: string; value: string; options?: CookieOptions }[]) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        } catch {
+          /* set from Server Component */
+        }
+      },
+    },
+  });
+}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { ChartColumn, CircleDollarSign, PackageSearch, ShoppingBag } from "lucide-react";
-import { loadRestaurantSnapshot, type RestaurantSnapshot } from "@/lib/data-source";
+import { useRestaurantSnapshot } from "@/lib/hooks/use-restaurant-snapshot";
 import {
   AcademicCard,
   AcademicCardBody,
@@ -15,17 +15,7 @@ function formatCurrency(value: number) {
 }
 
 export function ReportsPanel() {
-  const [snapshot, setSnapshot] = useState<RestaurantSnapshot | null>(null);
-
-  useEffect(() => {
-    let ignore = false;
-    void loadRestaurantSnapshot().then((data) => {
-      if (!ignore) setSnapshot(data);
-    });
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  const { snapshot, loading } = useRestaurantSnapshot();
 
   const metrics = useMemo(() => {
     if (!snapshot) {
@@ -59,7 +49,7 @@ export function ReportsPanel() {
     return { sales, orders, lowStock, topProducts };
   }, [snapshot]);
 
-  if (!snapshot) {
+  if (loading || !snapshot) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-8 text-sm font-semibold text-slate-500 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-400">
         Cargando reportes...

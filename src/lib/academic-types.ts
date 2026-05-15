@@ -38,7 +38,15 @@ export interface PerfilAcademico {
   identificador_institucional?: string;
   seccion?: string;
   foto_perfil_url?: string | null;
-  estado: "activo" | "inactivo" | "suspendido";
+  estado: "activo" | "inactivo" | "suspendido" | "pendiente_activacion";
+  rut?: string;
+  telefono?: string;
+  correo_secundario?: string;
+  direccion?: string;
+  fecha_nacimiento?: string;
+  observaciones?: string;
+  fecha_creacion?: string;
+  fecha_actualizacion?: string;
 }
 
 export interface Usuario {

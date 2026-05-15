@@ -8,8 +8,13 @@ import {
   listarSecciones,
   listarClases,
   crearCurso,
+  crearSeccion,
+  crearClase,
   type CursoDraft,
+  type SeccionDraft,
+  type ClaseDraft,
 } from "@/lib/academic-mutations";
+import { obtenerIdProfesorSesion } from "@/lib/academic-auth";
 import {
   AcademicCard,
   AcademicCardHeader,
@@ -51,6 +56,9 @@ export function CourseManager() {
   const [toast, setToast] = useState<{ message: string; tone: "success" | "error" } | null>(null);
 
   const [showNewCurso, setShowNewCurso] = useState(false);
+  const [showNewSeccion, setShowNewSeccion] = useState(false);
+  const [showNewClase, setShowNewClase] = useState(false);
+  const [idProfesor, setIdProfesor] = useState("");
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -69,6 +77,7 @@ export function CourseManager() {
 
   useEffect(() => {
     void loadData();
+    void obtenerIdProfesorSesion().then(setIdProfesor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -83,7 +92,7 @@ export function CourseManager() {
       nombre_curso: form.get("nombre") as string,
       asignatura: form.get("asignatura") as string,
       seccion: form.get("seccion_base") as string,
-      id_profesor: "00000000-0000-6200-8000-000000000001",
+      id_profesor: idProfesor || (await obtenerIdProfesorSesion()),
       codigo_curso: (form.get("codigo") as string) || undefined,
       periodo: (form.get("periodo") as string) || undefined,
     };
@@ -93,6 +102,44 @@ export function CourseManager() {
     if (result.ok) {
       setShowNewCurso(false);
       if (result.id) setSelectedCursoId(result.id);
+      void loadData();
+    }
+  }
+
+  async function handleCreateSeccion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedCursoId) return;
+    const form = new FormData(event.currentTarget);
+    const draft: SeccionDraft = {
+      id_curso: selectedCursoId,
+      nombre_seccion: form.get("nombre_seccion") as string,
+      jornada: (form.get("jornada") as string) || undefined,
+      cupo: Number(form.get("cupo") || "0"),
+    };
+    const result = await crearSeccion(draft);
+    setToast({ message: result.mensaje, tone: result.ok ? "success" : "error" });
+    if (result.ok) {
+      setShowNewSeccion(false);
+      void loadData();
+    }
+  }
+
+  async function handleCreateClase(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedCursoId) return;
+    const form = new FormData(event.currentTarget);
+    const draft: ClaseDraft = {
+      id_curso: selectedCursoId,
+      id_seccion: (form.get("id_seccion") as string) || undefined,
+      nombre_clase: form.get("nombre_clase") as string,
+      fecha: form.get("fecha") as string,
+      objetivo: (form.get("objetivo") as string) || undefined,
+      tipo_servicio: (form.get("tipo_servicio") as string) || undefined,
+    };
+    const result = await crearClase(draft);
+    setToast({ message: result.mensaje, tone: result.ok ? "success" : "error" });
+    if (result.ok) {
+      setShowNewClase(false);
       void loadData();
     }
   }
@@ -185,7 +232,16 @@ export function CourseManager() {
             <AcademicCardHeader
               title="Secciones y Cohortes"
               subtitle={`Gestión de grupos para ${selectedCurso.nombre_curso}`}
-              action={<Button variant="secondary" icon={<Plus className="h-4 w-4" />} className="h-9 px-3 text-[10px] uppercase font-black">Añadir Sección</Button>}
+              action={
+                <Button
+                  variant="secondary"
+                  icon={<Plus className="h-4 w-4" />}
+                  className="h-9 px-3 text-[10px] uppercase font-black"
+                  onClick={() => setShowNewSeccion(true)}
+                >
+                  Añadir Sección
+                </Button>
+              }
             />
             <AcademicCardBody className="p-0">
               {filteredSecciones.length === 0 ? (
@@ -220,7 +276,16 @@ export function CourseManager() {
             <AcademicCardHeader
               title="Planificación de Clases"
               subtitle={`Agenda de sesiones de simulación`}
-              action={<Button variant="secondary" icon={<Plus className="h-4 w-4" />} className="h-9 px-3 text-[10px] uppercase font-black">Planificar Clase</Button>}
+              action={
+                <Button
+                  variant="secondary"
+                  icon={<Plus className="h-4 w-4" />}
+                  className="h-9 px-3 text-[10px] uppercase font-black"
+                  onClick={() => setShowNewClase(true)}
+                >
+                  Planificar Clase
+                </Button>
+              }
             />
             <AcademicCardBody className="p-0">
               {filteredClases.length === 0 ? (
@@ -251,6 +316,68 @@ export function CourseManager() {
           </AcademicCard>
         </div>
       ) : null}
+
+      <Modal open={showNewSeccion} onClose={() => setShowNewSeccion(false)} title="Nueva sección">
+        <form onSubmit={(e) => void handleCreateSeccion(e)} className="flex flex-col gap-4">
+          <FormField label="Nombre de sección" htmlFor="sec-nombre">
+            <Input id="sec-nombre" name="nombre_seccion" placeholder="Ej: RC24-A" required />
+          </FormField>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField label="Jornada" htmlFor="sec-jornada">
+              <Input id="sec-jornada" name="jornada" placeholder="Diurna" />
+            </FormField>
+            <FormField label="Cupo" htmlFor="sec-cupo">
+              <Input id="sec-cupo" name="cupo" type="number" min={0} defaultValue={28} />
+            </FormField>
+          </div>
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-white/5">
+            <Button variant="secondary" type="button" onClick={() => setShowNewSeccion(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">Crear sección</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={showNewClase} onClose={() => setShowNewClase(false)} title="Nueva clase">
+        <form onSubmit={(e) => void handleCreateClase(e)} className="flex flex-col gap-4">
+          <FormField label="Nombre de clase" htmlFor="clase-nombre">
+            <Input id="clase-nombre" name="nombre_clase" placeholder="Ej: Servicio Cocina Internacional" required />
+          </FormField>
+          <FormField label="Fecha" htmlFor="clase-fecha">
+            <Input id="clase-fecha" name="fecha" type="date" required />
+          </FormField>
+          <FormField label="Tipo de servicio" htmlFor="clase-servicio">
+            <Input id="clase-servicio" name="tipo_servicio" placeholder="Entrada + Fondo + Postre" />
+          </FormField>
+          {filteredSecciones.length > 0 ? (
+            <FormField label="Sección (opcional)" htmlFor="clase-seccion">
+              <select
+                id="clase-seccion"
+                name="id_seccion"
+                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5"
+                defaultValue=""
+              >
+                <option value="">Sin sección</option>
+                {filteredSecciones.map((sec) => (
+                  <option key={sec.id_seccion} value={sec.id_seccion}>
+                    {sec.nombre_seccion}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          ) : null}
+          <FormField label="Objetivo" htmlFor="clase-objetivo">
+            <Input id="clase-objetivo" name="objetivo" placeholder="Objetivo de la sesión" />
+          </FormField>
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4 dark:border-white/5">
+            <Button variant="secondary" type="button" onClick={() => setShowNewClase(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit">Crear clase</Button>
+          </div>
+        </form>
+      </Modal>
 
       <Modal open={showNewCurso} onClose={() => setShowNewCurso(false)} title="Nuevo curso académico">
         <form onSubmit={(e) => void handleCreateCurso(e)} className="flex flex-col gap-6">

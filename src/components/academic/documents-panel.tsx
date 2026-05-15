@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { FileBadge2, Printer, ReceiptText } from "lucide-react";
-import { loadRestaurantSnapshot, type RestaurantSnapshot } from "@/lib/data-source";
+import { useRestaurantSnapshot } from "@/lib/hooks/use-restaurant-snapshot";
 import {
   AcademicCard,
   AcademicCardBody,
@@ -12,24 +12,14 @@ import {
 } from "@/components/ui/academic-ui-kit";
 
 export function DocumentsPanel() {
-  const [snapshot, setSnapshot] = useState<RestaurantSnapshot | null>(null);
-
-  useEffect(() => {
-    let ignore = false;
-    void loadRestaurantSnapshot().then((data) => {
-      if (!ignore) setSnapshot(data);
-    });
-    return () => {
-      ignore = true;
-    };
-  }, []);
+  const { snapshot, loading } = useRestaurantSnapshot();
 
   const docs = useMemo(
     () => snapshot?.operationalDocuments.slice(0, 16) ?? [],
     [snapshot],
   );
 
-  if (!snapshot) {
+  if (loading || !snapshot) {
     return (
       <div className="rounded-xl border border-slate-200 bg-white p-8 text-sm font-semibold text-slate-500 dark:border-white/10 dark:bg-white/[0.02] dark:text-slate-400">
         Cargando documentos...
