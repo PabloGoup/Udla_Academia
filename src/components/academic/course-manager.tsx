@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { BookOpen, FolderOpen, Plus, Users, GraduationCap, Calendar, ChevronRight, LayoutGrid } from "lucide-react";
+import { BookOpen, Plus, Users, GraduationCap, Calendar, ChevronRight, LayoutGrid } from "lucide-react";
 import type { Curso, Seccion, Clase } from "@/lib/academic-types";
 import {
   listarCursos,
@@ -20,9 +20,9 @@ import {
   Input,
   Modal,
   OperationToast,
-  Select,
+
   StatusBadge,
-  Textarea,
+
 } from "@/components/ui/academic-ui-kit";
 
 /* ───── estado badge tono ───── */
@@ -83,7 +83,7 @@ export function CourseManager() {
       nombre_curso: form.get("nombre") as string,
       asignatura: form.get("asignatura") as string,
       seccion: form.get("seccion_base") as string,
-      id_profesor: "prof-1", // Demo
+      id_profesor: "00000000-0000-6200-8000-000000000001",
       codigo_curso: (form.get("codigo") as string) || undefined,
       periodo: (form.get("periodo") as string) || undefined,
     };

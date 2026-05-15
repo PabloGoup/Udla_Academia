@@ -38,23 +38,34 @@ function nextId(prefix: string): string {
 export async function listarCursos(): Promise<Curso[]> {
   if (!isSupabaseConfigured()) return [...localCursos];
 
-  const { data, error } = await getSupabaseBrowserClient()
+  const supabase = getSupabaseBrowserClient();
+
+  const { data: cursos, error } = await supabase
     .from("cursos")
-    .select("id_curso,id_profesor,nombre_curso,asignatura,seccion,codigo_curso,periodo,estado")
+    .select("id_curso,id_profesor,nombre_curso,asignatura,codigo_curso,periodo,estado")
     .order("nombre_curso");
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((r) => ({
-    id_curso: r.id_curso,
-    id_profesor: r.id_profesor,
-    nombre_curso: r.nombre_curso,
-    asignatura: r.asignatura,
-    seccion: r.seccion,
-    codigo_curso: r.codigo_curso ?? undefined,
-    periodo: r.periodo ?? undefined,
-    estado: r.estado as Curso["estado"],
-  }));
+  const { data: secciones } = await supabase
+    .from("secciones")
+    .select("id_curso,nombre_seccion")
+    .order("nombre_seccion");
+
+  return (cursos ?? []).map((r) => {
+    const seccionCurso = secciones?.find((s) => s.id_curso === r.id_curso);
+
+    return {
+      id_curso: r.id_curso,
+      id_profesor: r.id_profesor,
+      nombre_curso: r.nombre_curso,
+      asignatura: r.asignatura,
+      seccion: seccionCurso?.nombre_seccion ?? "Sin sección",
+      codigo_curso: r.codigo_curso ?? undefined,
+      periodo: r.periodo ?? undefined,
+      estado: r.estado as Curso["estado"],
+    };
+  });
 }
 
 export interface CursoDraft {
@@ -85,21 +96,46 @@ export async function crearCurso(draft: CursoDraft): Promise<ResultadoMutacion> 
     return { ok: true, mensaje: "Curso creado (demo).", id };
   }
 
-  const { data, error } = await getSupabaseBrowserClient()
+  const supabase = getSupabaseBrowserClient();
+
+  const { data, error } = await supabase
     .from("cursos")
     .insert({
       nombre_curso: draft.nombre_curso.trim(),
       asignatura: draft.asignatura.trim(),
-      seccion: draft.seccion,
       codigo_curso: draft.codigo_curso ?? null,
       periodo: draft.periodo ?? null,
       id_profesor: draft.id_profesor,
+      estado: "activo",
     })
     .select("id_curso")
     .single();
 
   if (error) return { ok: false, mensaje: error.message };
-  return { ok: true, mensaje: "Curso creado.", id: data.id_curso };
+
+  const idCursoCreado = data.id_curso;
+
+  if (draft.seccion?.trim()) {
+    const { error: seccionError } = await supabase
+      .from("secciones")
+      .insert({
+        id_curso: idCursoCreado,
+        nombre_seccion: draft.seccion.trim(),
+        jornada: "No definida",
+        cupo: 0,
+        estado: "activa",
+      });
+
+    if (seccionError) {
+      return {
+        ok: false,
+        mensaje: `Curso creado, pero no se pudo crear la sección: ${seccionError.message}`,
+        id: idCursoCreado,
+      };
+    }
+  }
+
+  return { ok: true, mensaje: "Curso creado.", id: idCursoCreado };
 }
 
 /* ───────────────── Secciones ───────────────── */
@@ -169,10 +205,10 @@ export async function listarAlumnos(seccion?: string): Promise<Usuario[]> {
   }
 
   let query = getSupabaseBrowserClient()
-    .from("usuarios")
-    .select("id_usuario,nombre,correo,rol,seccion,identificador_institucional,estado,fecha_creacion")
-    .eq("rol", "alumno")
-    .order("nombre");
+    .from("perfiles_academicos")
+    .select("id_perfil,id_usuario,nombre_completo,correo,rol_academico,seccion,identificador_institucional,estado,fecha_creacion")
+    .eq("rol_academico", "alumno")
+    .order("nombre_completo");
 
   if (seccion) query = query.eq("seccion", seccion);
 
@@ -180,10 +216,10 @@ export async function listarAlumnos(seccion?: string): Promise<Usuario[]> {
   if (error) throw new Error(error.message);
 
   return (data ?? []).map((r) => ({
-    id_usuario: r.id_usuario,
-    nombre: r.nombre,
+    id_usuario: r.id_usuario ?? r.id_perfil,
+    nombre: r.nombre_completo,
     correo: r.correo,
-    rol: r.rol,
+    rol: r.rol_academico,
     seccion: r.seccion ?? undefined,
     identificador_institucional: r.identificador_institucional ?? undefined,
     estado: r.estado as "activo" | "inactivo" | "suspendido",
@@ -218,19 +254,20 @@ export async function crearAlumno(draft: AlumnoDraft): Promise<ResultadoMutacion
   }
 
   const { data, error } = await getSupabaseBrowserClient()
-    .from("usuarios")
+    .from("perfiles_academicos")
     .insert({
-      nombre: draft.nombre.trim(),
+      nombre_completo: draft.nombre.trim(),
       correo: draft.correo.trim(),
-      rol: "alumno",
+      rol_academico: "alumno",
       seccion: draft.seccion ?? null,
       identificador_institucional: draft.identificador_institucional ?? null,
+      estado: "activo",
     })
-    .select("id_usuario")
+    .select("id_perfil")
     .single();
 
   if (error) return { ok: false, mensaje: error.message };
-  return { ok: true, mensaje: "Alumno creado.", id: data.id_usuario };
+  return { ok: true, mensaje: "Alumno creado.", id: data.id_perfil };
 }
 
 export async function importarAlumnosCSV(

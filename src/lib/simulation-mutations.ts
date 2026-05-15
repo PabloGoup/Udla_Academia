@@ -191,7 +191,7 @@ export async function listarSimulaciones(id_clase?: string): Promise<Simulacion[
 
   let query = getSupabaseBrowserClient()
     .from("simulaciones")
-    .select("id_simulacion,id_clase,tipo_servicio,estado,fecha_inicio,fecha_cierre,duracion_estimada")
+    .select("id_simulacion,id_clase,nombre_simulacion,tipo_servicio,estado,fecha_inicio,fecha_cierre,duracion_estimada_minutos")
     .order("id_simulacion", { ascending: false });
 
   if (id_clase) query = query.eq("id_clase", id_clase);
@@ -206,7 +206,7 @@ export async function listarSimulaciones(id_clase?: string): Promise<Simulacion[
     estado: r.estado as EstadoSimulacion,
     fecha_inicio: r.fecha_inicio ?? undefined,
     fecha_cierre: r.fecha_cierre ?? undefined,
-    duracion_estimada: r.duracion_estimada,
+    duracion_estimada: r.duracion_estimada_minutos,
   }));
 }
 
@@ -230,7 +230,7 @@ export async function obtenerSimulacion(id: string): Promise<Simulacion | null> 
     estado: data.estado as EstadoSimulacion,
     fecha_inicio: data.fecha_inicio ?? undefined,
     fecha_cierre: data.fecha_cierre ?? undefined,
-    duracion_estimada: data.duracion_estimada,
+    duracion_estimada: data.duracion_estimada_minutos,
   };
 }
 
@@ -373,9 +373,11 @@ export async function crearSimulacion(draft: SimulationDraft): Promise<Resultado
     .from("simulaciones")
     .insert({
       id_clase: draft.id_clase,
+      nombre_simulacion: draft.nombre_simulacion,
       tipo_servicio: draft.tipo_servicio,
+      objetivo: draft.objetivo,
       estado: "creada",
-      duracion_estimada: draft.duracion_estimada,
+      duracion_estimada_minutos: draft.duracion_estimada,
     })
     .select("id_simulacion")
     .single();

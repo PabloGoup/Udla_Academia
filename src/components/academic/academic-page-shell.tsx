@@ -28,8 +28,14 @@ import {
   X,
   LogIn,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState, type FormEvent } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import {
+  getCurrentAuthProfile,
+  signInOperator,
+  signOutOperator,
+  type AuthProfile,
+} from "@/lib/operations";
 
 const navItems = [
   { href: "/academico", label: "Dashboard", icon: LayoutDashboard },
@@ -65,31 +71,31 @@ const roleSimulationOptions: Array<{
   description: string;
   defaultRoute: string;
 }> = [
-  {
-    id: "master",
-    label: "Maestro",
-    description: "Visión total de módulos, permisos y configuración.",
-    defaultRoute: "/academico",
-  },
-  {
-    id: "administrador",
-    label: "Administrador",
-    description: "Control institucional, cursos, perfiles y operación.",
-    defaultRoute: "/academico",
-  },
-  {
-    id: "docente",
-    label: "Docente",
-    description: "Gestión de clases, simulaciones, evaluación y seguimiento.",
-    defaultRoute: "/academico",
-  },
-  {
-    id: "alumno",
-    label: "Alumno",
-    description: "Portal del alumno con rol, tareas y trazabilidad.",
-    defaultRoute: "/academico/alumno",
-  },
-];
+    {
+      id: "master",
+      label: "Maestro",
+      description: "Visión total de módulos, permisos y configuración.",
+      defaultRoute: "/academico",
+    },
+    {
+      id: "administrador",
+      label: "Administrador",
+      description: "Control institucional, cursos, perfiles y operación.",
+      defaultRoute: "/academico",
+    },
+    {
+      id: "docente",
+      label: "Docente",
+      description: "Gestión de clases, simulaciones, evaluación y seguimiento.",
+      defaultRoute: "/academico",
+    },
+    {
+      id: "alumno",
+      label: "Alumno",
+      description: "Portal del alumno con rol, tareas y trazabilidad.",
+      defaultRoute: "/academico/alumno",
+    },
+  ];
 
 const navByRole: Record<RoleSimulation, ReadonlyArray<(typeof navItems)[number]>> = {
   master: navItems,
@@ -118,6 +124,12 @@ export function AcademicPageShell({
   const [isMounted, setIsMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [simulatedRole, setSimulatedRole] = useState<RoleSimulation>("master");
+  const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null);
+  const [authState, setAuthState] = useState<"anonymous" | "checking" | "authenticated">("anonymous");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authOpen, setAuthOpen] = useState(false);
+  const [operationNotice, setOperationNotice] = useState<{ tone: "success" | "warning"; message: string } | null>(null);
   const supabaseReady = isSupabaseConfigured();
   const activeRoleSimulation =
     roleSimulationOptions.find((role) => role.id === simulatedRole) ??
@@ -129,16 +141,50 @@ export function AcademicPageShell({
     const saved = localStorage.getItem("udla-theme");
     if (saved === "dark") setDarkMode(true);
 
-    const savedRole = localStorage.getItem("udla-role-sim") as
-      | RoleSimulation
-      | null;
+    const savedRole = localStorage.getItem("udla-role-sim") as RoleSimulation | null;
     if (
       savedRole &&
       roleSimulationOptions.some((role) => role.id === savedRole)
     ) {
       setSimulatedRole(savedRole);
     }
-  }, []);
+
+    if (supabaseReady) {
+      getCurrentAuthProfile().then((profile) => {
+        setAuthProfile(profile);
+        setAuthState(profile ? "authenticated" : "anonymous");
+      });
+    }
+  }, [supabaseReady]);
+
+  async function handleSignIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAuthState("checking");
+    const { result, profile } = await signInOperator(authEmail, authPassword);
+
+    setOperationNotice({
+      tone: result.ok ? "success" : "warning",
+      message: result.message,
+    });
+
+    setAuthProfile(profile);
+    setAuthState(profile ? "authenticated" : "anonymous");
+
+    if (profile) {
+      setAuthOpen(false);
+      setAuthPassword("");
+    }
+  }
+
+  async function handleSignOut() {
+    const result = await signOutOperator();
+    setOperationNotice({
+      tone: result.ok ? "success" : "warning",
+      message: result.message,
+    });
+    setAuthProfile(null);
+    setAuthState("anonymous");
+  }
 
   const toggleTheme = () => {
     const nextTheme = !darkMode;
@@ -170,13 +216,13 @@ export function AcademicPageShell({
         {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-40 bg-white-900/50 backdrop-blur-sm lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* ───── Sidebar ───── */}
-        <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 transform flex-col border-r border-slate-200 bg-white p-4 transition-transform duration-300 dark:border-white/10 dark:bg-[#151617] lg:translate-x-0 lg:static lg:h-screen lg:shrink-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 transform flex-col border-r border-slate-200 bg-orange-50/40 p-4 transition-transform duration-300 dark:border-white/10 dark:bg-[#151617] lg:translate-x-0 lg:static lg:h-screen lg:shrink-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
 
           <div className="flex items-center justify-between mb-6 px-2 lg:hidden">
             <div className="flex items-center gap-2">
@@ -194,11 +240,11 @@ export function AcademicPageShell({
           </div>
 
           {/* Perfil Activo */}
-          <div className="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
+          <div className="mb-6 rounded-xl p-4 border border-white bg-white dark:border-white/10 dark:bg-white/5">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
               Perfil Activo
             </p>
-            <div className="mt-3 rounded-lg border border-slate-200 bg-white p-2 dark:border-white/10 dark:bg-white/[0.03]">
+            <div className="mt-3 rounded-lg p-2 dark:border-white/10 dark:bg-white">
               <Image
                 src="/logo-original-udla.png"
                 alt="UDLA"
@@ -228,7 +274,7 @@ export function AcademicPageShell({
                   href={href}
                   className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all ${isActive
                     ? "bg-[var(--udla-orange)] text-white shadow-md shadow-orange-500/20"
-                    : "text-slate-600 hover:bg-orange-50 hover:text-orange-600 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white"
+                    : "text-black hover:bg-orange-50 hover:text-orange-600 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white"
                     }`}
                 >
                   <span className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${isActive ? "bg-white/20" : "bg-orange-50 dark:bg-orange-500/10"
@@ -245,16 +291,22 @@ export function AcademicPageShell({
           <div className="mt-auto pt-4 border-t border-slate-100 dark:border-white/5">
             <div className="flex items-center gap-2 px-2 text-[10px] font-medium text-slate-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              v2.4.0 Stable Build
+               GoUp Soluciones IT $ RPA v.07
             </div>
           </div>
         </aside>
 
         {/* ───── Main Content Area ───── */}
-        <div className="flex flex-1 flex-col min-w-0">
+        <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
 
           {/* Header Superior (Premium UDLA) */}
           <header className="sticky top-0 z-30 border-b-4 border-[var(--udla-orange)] bg-white shadow-sm dark:bg-[#0b1017]">
+            {operationNotice && (
+              <div className={`flex items-center justify-between px-4 py-2 text-xs font-bold ${operationNotice.tone === "success" ? "bg-emerald-500 text-white" : "bg-rose-500 text-white"}`}>
+                <span>{operationNotice.message}</span>
+                <button onClick={() => setOperationNotice(null)} className="opacity-70 hover:opacity-100">Cerrar</button>
+              </div>
+            )}
             <div className="flex flex-col gap-4 px-4 py-4 lg:px-8">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -264,7 +316,7 @@ export function AcademicPageShell({
                   >
                     <Menu className="h-5 w-5" />
                   </button>
-        
+
                   <div className="hidden sm:block">
                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Universidad de Las Américas</p>
                     <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-none mt-1">
@@ -283,10 +335,77 @@ export function AcademicPageShell({
                     <StatusBadge label="Realtime sin canal" tone="rose" />
                   </div>
 
-                  <button className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
-                    <LogIn className="h-4 w-4" />
-                    Iniciar sesión
-                  </button>
+                  <div className="relative">
+                    {authProfile ? (
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href="/academico/perfil"
+                          className="flex h-10 items-center gap-2 rounded-lg border border-emerald-200 bg-white px-4 text-xs font-bold text-emerald-700 transition hover:bg-emerald-50 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400"
+                        >
+                          <UserRound className="h-4 w-4" />
+                          {authProfile.name}
+                        </Link>
+                        <button
+                          onClick={handleSignOut}
+                          className="flex h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+                          title="Cerrar sesión"
+                        >
+                          <LogIn className="h-4 w-4 rotate-180" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setAuthOpen(!authOpen)}
+                          className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
+                        >
+                          {authState === "checking" ? (
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                          ) : (
+                            <LogIn className="h-4 w-4" />
+                          )}
+                          Iniciar sesión
+                        </button>
+
+                        {authOpen && (
+                          <div className="absolute right-0 top-12 z-50 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-xl dark:border-white/10 dark:bg-[#151617]">
+                            <form onSubmit={handleSignIn} className="flex flex-col gap-3">
+                              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Acceso Académico</h3>
+                              <div>
+                                <label className="text-[10px] font-bold uppercase text-slate-400">Email</label>
+                                <input
+                                  type="email"
+                                  value={authEmail}
+                                  onChange={(e) => setAuthEmail(e.target.value)}
+                                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-orange-500 dark:border-white/10 dark:bg-white/5"
+                                  placeholder="usuario@pudahuel.udla.cl"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold uppercase text-slate-400">Contraseña</label>
+                                <input
+                                  type="password"
+                                  value={authPassword}
+                                  onChange={(e) => setAuthPassword(e.target.value)}
+                                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-orange-500 dark:border-white/10 dark:bg-white/5"
+                                  placeholder="••••••••"
+                                  required
+                                />
+                              </div>
+                              <button
+                                type="submit"
+                                disabled={authState === "checking"}
+                                className="mt-2 flex h-10 items-center justify-center rounded-lg bg-[var(--udla-orange)] text-sm font-bold text-white transition hover:bg-orange-600 disabled:opacity-50"
+                              >
+                                {authState === "checking" ? "Verificando..." : "Entrar"}
+                              </button>
+                            </form>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
 
                   <button
                     onClick={toggleTheme}
@@ -298,7 +417,7 @@ export function AcademicPageShell({
                 </div>
               </div>
 
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-2 ">
                 {roleSimulationOptions.map((roleOption) => {
                   const active = roleOption.id === simulatedRole;
                   return (
@@ -306,11 +425,10 @@ export function AcademicPageShell({
                       key={roleOption.id}
                       type="button"
                       onClick={() => switchSimulatedRole(roleOption.id)}
-                      className={`col-span-2 rounded-lg border px-3 py-2 text-left text-xs font-bold uppercase tracking-wide transition sm:col-span-1 ${
-                        active
-                          ? "border-[var(--udla-orange)] bg-[var(--udla-orange)] text-white shadow-md shadow-orange-500/20"
-                          : "border-slate-200 bg-white text-slate-600 hover:border-orange-200 hover:text-orange-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-orange-500/50"
-                      }`}
+                      className={`col-span-2 rounded-lg border px-3 py-2 text-left text-xs font-bold uppercase tracking-wide transition sm:col-span-1 ${active
+                        ? "border-[var(--udla-orange)] bg-[var(--udla-orange)] text-white shadow-md shadow-orange-500/20"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-orange-200 hover:text-orange-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-orange-500/50"
+                        }`}
                     >
                       {roleOption.label}
                     </button>
@@ -322,7 +440,7 @@ export function AcademicPageShell({
           </header>
 
           {/* Page Content */}
-          <main className="mx-auto w-full max-w-[1600px] p-4 sm:p-8">
+          <main className="academic-mobile-safe mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 py-4 sm:p-8">
             <div className="mb-8">
               <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-2">
                 ACADEMIA · {title.toUpperCase()}

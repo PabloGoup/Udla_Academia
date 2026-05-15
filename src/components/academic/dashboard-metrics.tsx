@@ -54,7 +54,7 @@ export function DashboardMetrics({
         <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2">
           <Activity className="h-4 w-4" /> En vivo (Operacional del Restaurante)
         </h2>
-        <div className="grid grid-cols-4 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-4 gap-2 sm:gap-3">
           <MetricCard
             label="Ventas en Tiempo Real"
             value={`$${opStats.ventas.toLocaleString("es-CL")}`}
@@ -95,7 +95,7 @@ export function DashboardMetrics({
         <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2">
           <GraduationCap className="h-4 w-4" /> Métricas del Curso (Evaluación Académica)
         </h2>
-        <div className="grid grid-cols-4 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-4 gap-2 sm:gap-3">
           <MetricCard
             label="Simulaciones"
             value={numberFormatter.format(totals.simulaciones)}
@@ -154,15 +154,21 @@ function MetricCard({
   textClass?: string;
 }) {
   return (
-    <div className={`col-span-2 min-w-0 flex flex-col gap-3 rounded-xl border p-4 shadow-sm ring-1 ring-black/[0.02] transition-all hover:shadow-md sm:col-span-1 sm:p-5 dark:ring-white/[0.02] ${colorClass}`}>
+    <div className={`col-span-1 min-w-0 overflow-hidden flex flex-col gap-2 rounded-xl border p-2 shadow-sm ring-1 ring-black/[0.02] transition-all hover:shadow-md sm:gap-3 sm:p-5 dark:ring-white/[0.02] ${colorClass}`}>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-bold uppercase tracking-[0.12em] opacity-60">{label}</span>
+        <span className="text-[8px] font-bold uppercase leading-tight tracking-[0.08em] opacity-60 sm:text-[10px]">
+          {label}
+        </span>
         <div className={`p-2 rounded-lg bg-white shadow-sm ring-1 ring-black/5 dark:bg-black/20 ${textClass}`}>
           <Icon className="h-4 w-4" />
         </div>
       </div>
-      <div className={`text-2xl font-extrabold tracking-tight sm:text-3xl ${textClass}`}>{value}</div>
-      <div className="text-[10px] font-bold uppercase tracking-wide opacity-50">{detail}</div>
+      <div className={`text-sm font-extrabold leading-none tracking-tight sm:text-3xl ${textClass}`}>
+        {value}
+      </div>
+      <div className="hidden text-[9px] font-bold uppercase leading-tight tracking-wide opacity-50 sm:block sm:text-[10px]">
+        {detail}
+      </div>
     </div>
   );
 }

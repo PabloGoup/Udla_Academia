@@ -26,10 +26,26 @@ import {
 import { SimulationStateActions } from "@/components/academic/simulation-state-actions";
 import { SimulationStageRail } from "@/components/academic/simulation-stage-rail";
 
+
 const dateTimeFormatter = new Intl.DateTimeFormat("es-CL", {
   dateStyle: "short",
   timeStyle: "short",
 });
+
+function getSafeText(value: unknown, fallback = "Sin información") {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+function getInitials(name: unknown) {
+  const safeName = getSafeText(name, "Alumno");
+  return safeName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
 
 export function ActiveSimulationPanel({
   report,
@@ -45,9 +61,9 @@ export function ActiveSimulationPanel({
   );
 
   return (
-    <div className="flex flex-col gap-6 animate-in fade-in duration-500">
+    <div className="flex min-w-0 flex-col gap-4 overflow-hidden animate-in fade-in duration-500 sm:gap-6">
       {/* Resumen de Métricas */}
-      <div className="grid grid-cols-4 gap-4 md:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-4 gap-2 overflow-hidden sm:gap-4">
         <MetricCard 
           label="Alumnos" 
           value={report.alumnos_asignados} 
@@ -55,7 +71,7 @@ export function ActiveSimulationPanel({
           tone="sky"
         />
         <MetricCard 
-          label="Venta Operativa" 
+          label="Venta Op." 
           value={`$${report.venta_operativa_total.toLocaleString("es-CL")}`} 
           icon={<Zap className="h-4 w-4" />} 
           tone="emerald"
@@ -74,16 +90,16 @@ export function ActiveSimulationPanel({
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-12 items-start">
+      <div className="grid min-w-0 gap-4 overflow-hidden lg:grid-cols-12 lg:items-start sm:gap-6">
         {/* Columna Principal: Estado y Roles */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-4 overflow-hidden lg:col-span-8 sm:gap-6">
           <AcademicCard className="border-t-4 border-t-emerald-500">
             <AcademicCardHeader 
               title="Centro de Control de Simulación" 
               subtitle={`${report.nombre_curso} · ${report.nombre_clase}`}
               action={<StatusBadge label={report.estado.toUpperCase()} tone="emerald" />}
             />
-            <AcademicCardBody className="flex flex-col gap-8">
+            <AcademicCardBody className="flex min-w-0 flex-col gap-4 overflow-hidden sm:gap-8">
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                   <LayoutDashboard className="h-3 w-3" /> Progreso de la Etapa
@@ -91,7 +107,7 @@ export function ActiveSimulationPanel({
                 <SimulationStageRail estado={report.estado} />
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-2 pt-6 border-t border-slate-100 dark:border-white/5">
+              <div className="grid min-w-0 gap-4 border-t border-slate-100 pt-4 dark:border-white/5 sm:grid-cols-2 sm:gap-6 sm:pt-6">
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                     <Zap className="h-3 w-3 text-orange-500" /> Acciones de Estado
@@ -111,9 +127,9 @@ export function ActiveSimulationPanel({
                     {detail.areas.map((area) => (
                       <div
                         key={area.id_area_simulacion}
-                        className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-white/5 dark:bg-white/[0.02]"
+                        className="flex min-w-0 items-center justify-between gap-2 overflow-hidden rounded-xl border border-slate-100 bg-slate-50/50 p-2 dark:border-white/5 dark:bg-white/[0.02] sm:p-3"
                       >
-                        <span className="text-xs font-black uppercase tracking-tight text-slate-700 dark:text-slate-300">
+                        <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-tight text-slate-700 dark:text-slate-300 sm:text-xs">
                           {areaLabels[area.area_trabajo] || area.area_trabajo}
                         </span>
                         <div className={`h-2 w-2 rounded-full ${area.estado === "lista" ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
@@ -131,21 +147,21 @@ export function ActiveSimulationPanel({
               subtitle={`${detail.roles.length} alumnos en sus puestos operativos`}
             />
             <AcademicCardBody className="p-0">
-              <div className="grid sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-100 dark:divide-white/5">
+              <div className="grid min-w-0 divide-y divide-slate-100 dark:divide-white/5 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
                 {detail.roles.map((role) => (
                   <div
                     key={role.id_rol_simulacion}
-                    className="flex items-center gap-4 p-4 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors"
+                    className="flex min-w-0 items-center gap-3 overflow-hidden p-3 transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.02] sm:gap-4 sm:p-4"
                   >
-                    <div className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-white font-black text-xs">
-                      {role.nombre_alumno.split(" ").map(n => n[0]).join("")}
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[10px] font-black text-white sm:h-10 sm:w-10 sm:text-xs">
+                      {getInitials(role.nombre_alumno)}
                     </div>
-                    <div>
-                      <div className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">
-                        {role.nombre_alumno}
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <div className="truncate text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white sm:text-sm">
+                        {getSafeText(role.nombre_alumno, "Alumno sin nombre")}
                       </div>
-                      <div className="text-[10px] font-bold text-orange-600 uppercase">
-                        {role.rol_asignado} · {areaLabels[role.area_trabajo] || role.area_trabajo}
+                      <div className="truncate text-[9px] font-bold uppercase text-orange-600 sm:text-[10px]">
+                        {getSafeText(role.rol_asignado, "Rol no asignado")} · {areaLabels[role.area_trabajo] || getSafeText(role.area_trabajo, "Área no asignada")}
                       </div>
                     </div>
                   </div>
@@ -156,7 +172,7 @@ export function ActiveSimulationPanel({
         </div>
 
         {/* Columna Lateral: Imprevistos y Evaluaciones */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-4 overflow-hidden lg:col-span-4 sm:gap-6">
           <AcademicCard className="border-l-4 border-l-amber-500">
             <AcademicCardHeader 
               title="Imprevistos Activos" 
@@ -167,9 +183,9 @@ export function ActiveSimulationPanel({
                 activeIncidents.map((incident) => (
                   <div
                     key={incident.id_imprevisto}
-                    className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 dark:border-amber-500/20 dark:bg-amber-500/5 animate-pulse"
+                    className="min-w-0 overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/50 p-3 animate-pulse dark:border-amber-500/20 dark:bg-amber-500/5 sm:p-4"
                   >
-                    <div className="text-xs font-black text-amber-900 dark:text-amber-200 uppercase tracking-tight">
+                    <div className="truncate text-xs font-black uppercase tracking-tight text-amber-900 dark:text-amber-200">
                       {imprevistoLabels[incident.tipo_imprevisto] || incident.tipo_imprevisto}
                     </div>
                     <p className="mt-1 text-xs font-medium leading-relaxed text-amber-700 dark:text-amber-50/70">
@@ -196,9 +212,9 @@ export function ActiveSimulationPanel({
                 detail.evaluaciones.map((evaluation) => (
                   <div
                     key={evaluation.id_evaluacion}
-                    className="flex flex-col gap-1 p-3 rounded-xl border border-slate-100 bg-slate-50/50 dark:border-white/5 dark:bg-white/[0.02]"
+                    className="flex min-w-0 flex-col gap-1 overflow-hidden rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-white/5 dark:bg-white/[0.02]"
                   >
-                    <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                    <div className="truncate text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white">
                       {evaluation.titulo}
                     </div>
                     <div className="flex items-center justify-between mt-1">

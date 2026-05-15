@@ -80,3 +80,28 @@ img {
     box-shadow: none;
   }
 }
+@media (max-width: 640px) {
+  .academic-mobile-safe,
+  .academic-mobile-safe * {
+    min-width: 0;
+  }
+
+  .academic-mobile-safe .grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .academic-mobile-safe h1,
+  .academic-mobile-safe h2,
+  .academic-mobile-safe h3,
+  .academic-mobile-safe p,
+  .academic-mobile-safe span,
+  .academic-mobile-safe button {
+    overflow-wrap: anywhere;
+  }
+
+  .academic-mobile-safe [class*="p-6"],
+  .academic-mobile-safe [class*="p-7"],
+  .academic-mobile-safe [class*="p-8"] {
+    padding: 1rem;
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { GraduationCap, RefreshCw, Utensils, UsersRound } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -25,6 +26,10 @@ type StudentRoleOption = {
   rolAsignado: string;
 };
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
 export function StudentAcademicDashboard() {
   const [state, setState] = useState<StudentDashboardState>("loading");
   const [panel, setPanel] = useState<PanelAlumnoAcademico | null>(null);
@@ -46,18 +51,17 @@ export function StudentAcademicDashboard() {
         return;
       }
 
-      const detail = await obtenerDetalleSimulacionAcademica(
-        nextPanel.simulacion.id_simulacion,
+      const simulationId = nextPanel.simulacion.id_simulacion;
+      const localRoles = listarRolesLocales().filter(
+        (role) => role.id_simulacion === simulationId,
       );
 
+      const detail = isUuid(simulationId)
+        ? await obtenerDetalleSimulacionAcademica(simulationId)
+        : null;
+
       const nextOptions =
-        (detail?.roles.length
-          ? detail.roles
-          : listarRolesLocales().filter(
-              (role) =>
-                role.id_simulacion === nextPanel.simulacion.id_simulacion,
-            )
-        ).map((role) => ({
+        (detail?.roles.length ? detail.roles : localRoles).map((role) => ({
           idPerfil: role.id_alumno,
           nombreAlumno: role.nombre_alumno,
           rolAsignado: role.rol_asignado,
@@ -106,54 +110,68 @@ export function StudentAcademicDashboard() {
   const tasks = useMemo(() => (panel ? buildStudentTasks(panel) : []), [panel]);
 
   return (
-    <main className="min-h-screen bg-[#0b1017] text-slate-100">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase text-orange-300">
+    <main className="min-h-screen bg-white text-slate-100">
+      <div className="mx-auto flex w-full max-w-full flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
+        <header className="flex flex-col max-w-full gap-4 bg-orange-50 border-b border-black/10 pb-5 lg:flex-row lg:items-center lg:justify-between">
+         
+          <div className="space-y-2 py-2 px-2">
+          <div className="mt-3 rounded-lg  p-2 dark:border-white/10 dark:bg-white">
+                          <Image
+                            src="/logo-original-udla.png"
+                            alt="UDLA"
+                            width={220}
+                            height={64}
+                            className="object-contain"
+                          />
+                        </div>
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase text-orange-600">
+              
               <GraduationCap className="h-4 w-4" />
               Portal alumno
             </div>
+               
             <div>
-              <h1 className="text-2xl font-semibold text-white sm:text-3xl">
+              <h1 className="text-2xl font-semibold text-black sm:text-3xl">
                 Simulacion activa
               </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
                 Vista de rol, area, tareas, evaluaciones e historial conectado
                 al servicio academico.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center px-4 gap-2">
+            
             <button
               type="button"
               onClick={() => void loadPanel()}
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 text-sm font-medium text-white transition hover:border-white/25 hover:bg-white/10"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-black/15 bg-black/5 px-3 text-sm font-medium text-black transition hover:border-black/25 hover:bg-black/10"
             >
               <RefreshCw className="h-4 w-4" />
               Actualizar
             </button>
             <Link
               href="/academico"
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 text-sm font-medium text-white transition hover:border-white/25 hover:bg-white/10"
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-black/15 bg-black/5 px-3 text-sm font-medium text-black transition hover:border-black/25 hover:bg-black/10"
             >
               <GraduationCap className="h-4 w-4" />
               Docente
             </Link>
             <Link
               href="/"
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-orange-600 px-3 text-sm font-semibold text-white transition hover:bg-orange-500"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-orange-400 px-3 text-sm font-semibold text-white transition hover:bg-orange-800"
             >
               <Utensils className="h-4 w-4" />
               Operacion
             </Link>
           </div>
+    
         </header>
 
         {state === "ready" && roleOptions.length > 0 ? (
-          <section className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-orange-200">
+          <section className="rounded-xl border border-black/10 bg-black/[0.03] p-3">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-orange-600">
               <UsersRound className="h-4 w-4" />
               Vista por alumno / rol
             </div>
@@ -167,14 +185,14 @@ export function StudentAcademicDashboard() {
                     onClick={() => setSelectedProfileId(option.idPerfil)}
                     className={`col-span-2 rounded-lg border px-3 py-2 text-left transition sm:col-span-1 ${
                       active
-                        ? "border-orange-500 bg-orange-500/20 text-orange-100 shadow-md shadow-orange-600/20"
-                        : "border-white/10 bg-white/[0.02] text-slate-200 hover:border-orange-300/40 hover:bg-white/[0.06]"
+                        ? "border-orange-500 bg-orange-500/20 text-orange-600 shadow-md shadow-orange-600/20"
+                        : "border-black/10 bg-black/[0.02] text-black hover:border-orange-600/40 hover:bg-black/[0.06]"
                     }`}
                   >
                     <div className="text-xs font-bold uppercase tracking-wide">
                       {option.rolAsignado}
                     </div>
-                    <div className="mt-0.5 text-xs text-slate-300">
+                    <div className="mt-0.5 text-xs text-slate-600">
                       {option.nombreAlumno}
                     </div>
                   </button>
