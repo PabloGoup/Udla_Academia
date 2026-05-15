@@ -61,9 +61,9 @@ export function ActiveSimulationPanel({
   );
 
   return (
-    <div className="flex w-full min-w-0 max-w-none flex-col items-stretch gap-4 overflow-visible animate-in fade-in duration-500 sm:gap-6">
+    <div className="flex w-full min-w-0 max-w-none flex-col  items-stretch gap-4 overflow-visible animate-in fade-in duration-500 sm:gap-6">
       {/* Resumen de Métricas */}
-      <div className="grid min-w-0 grid-cols-4 gap-2 overflow-hidden sm:gap-4">
+      <div className="flex w-full max-w-none bg-white dark:bg-[#0b1017] grid min-w-0 grid-cols-4 self-stretch rounded-xl border-t-4 border-t-orange-500 max-sm:rounded-xl py-2 px-2 gap-2 overflow-hidden sm:gap-4">
         <MetricCard 
           label="Alumnos" 
           value={report.alumnos_asignados} 
@@ -184,7 +184,7 @@ export function ActiveSimulationPanel({
           </AcademicCard>
         </div>
 
-        {/* Columna Lateral: Imprevistos y Evaluaciones */}
+        {/* Columna Lateral: Imprevistos, Evaluaciones y Trazabilidad */}
         <div className="flex w-full min-w-0 max-w-none flex-col items-stretch gap-4 overflow-visible max-sm:items-center lg:col-span-4 sm:gap-6">
           <AcademicCard className="w-full max-w-none min-w-0 self-stretch max-sm:relative max-sm:left-1/2 max-sm:!w-[calc(100dvw-24px)] max-sm:!max-w-[calc(100dvw-24px)] max-sm:-translate-x-1/2 max-sm:rounded-xl border-l-4 border-l-amber-500">
             <AcademicCardHeader 
@@ -216,8 +216,6 @@ export function ActiveSimulationPanel({
           </AcademicCard>
 
           <AcademicCard className="w-full max-w-none min-w-0 self-stretch max-sm:relative max-sm:left-1/2 max-sm:!w-[calc(100dvw-24px)] max-sm:!max-w-[calc(100dvw-24px)] max-sm:-translate-x-1/2 max-sm:rounded-xl">
-            
-     
             <AcademicCardHeader 
               title="Evaluaciones" 
               action={<ListChecks className="h-5 w-5 text-sky-500" />}
@@ -247,13 +245,10 @@ export function ActiveSimulationPanel({
               )}
             </AcademicCardBody>
           </AcademicCard>
-        </div>
 
-        {/* Trazabilidad: Ancho completo al final */}
-        <div className="flex w-full min-w-0 max-w-none flex-col items-stretch gap-4 overflow-visible max-sm:items-center lg:col-span-4 sm:gap-6">
           <AcademicCard className="w-full max-w-none min-w-0 self-stretch max-sm:relative max-sm:left-1/2 max-sm:!w-[calc(100dvw-24px)] max-sm:!max-w-[calc(100dvw-24px)] max-sm:-translate-x-1/2 max-sm:rounded-xl">
-            <AcademicCardHeader 
-              title="Trazabilidad Académica" 
+            <AcademicCardHeader
+              title="Trazabilidad Académica"
               subtitle="Registro histórico de acciones durante la simulación"
               action={<Activity className="h-5 w-5 text-purple-500" />}
             />

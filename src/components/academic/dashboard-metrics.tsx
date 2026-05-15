@@ -46,7 +46,7 @@ export function DashboardMetrics({
   }, []);
 
   return (
-    <div className="flex flex-col gap-5 sm:gap-8">
+    <div className="flex flex-col gap-5 bg-white dark:bg-[#0b1017] self-stretch rounded-xl border-t-4 border-t-orange-500 max-sm:rounded-xl py-2 px-2 sm:gap-8">
       {/* ───── PANEL OPERATIVO EN VIVO ───── */}
       <div>
         <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2">

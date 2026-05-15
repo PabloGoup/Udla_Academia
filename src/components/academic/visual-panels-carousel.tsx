@@ -3,11 +3,11 @@ import Image from "next/image";
 
 export function VisualPanelsCarousel() {
   return (
-    <div className="mb-5 sm:mb-8">
+    <div className="mb-5  sm:mb-8">
       <h2 className="mb-2 text-sm font-semibold text-slate-600 sm:mb-4 dark:text-slate-400">
         Módulos Integrados
       </h2>
-      <div className="grid grid-cols-4 gap-1.5 sm:gap-4">
+      <div className="grid grid-cols-4 gap-1.5  sm:gap-4">
         {visualPanels.map((panel, idx) => (
           <div
             key={idx}

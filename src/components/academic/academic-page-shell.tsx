@@ -246,7 +246,7 @@ export function AcademicPageShell({
         )}
 
         {/* ───── Sidebar ───── */}
-        <aside className={`fixed inset-y-0 left-0 z-50 flex w-[86vw] max-w-[360px] transform flex-col overflow-hidden border-r border-black/20 bg-[#252525] text-white transition-all duration-300 dark:border-white/10 lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:shrink-0 lg:translate-x-0 ${
+        <aside className={`fixed inset-y-0 left-0 z-50 flex w-[86vw] max-w-[360px] transform flex-col overflow-hidden border-r border-black/20 bg-[#252525] dark:bg-[#0b1017] text-white transition-all duration-300 dark:border-orange-800 lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:shrink-0 lg:translate-x-0 ${
           desktopSidebarOpen ? "lg:w-72" : "lg:w-0 lg:border-r-0 lg:pointer-events-none"
         } ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
           onMouseEnter={() => setDesktopSidebarHovered(true)}

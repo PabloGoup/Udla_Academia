@@ -20,7 +20,7 @@ export function SimulationList({
   errorMessage: string;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-[#101722] dark:shadow-2xl dark:shadow-black/20">
+    <section className="overflow-hidden mt-2 rounded-lg border border-slate-200 bg-white shadow-lg shadow-slate-200/50 dark:border-white/10 dark:bg-[#101722] dark:shadow-2xl dark:shadow-black/20">
       <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-white/10">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white uppercase tracking-tight">
