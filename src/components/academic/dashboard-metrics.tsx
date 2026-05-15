@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Activity,
-  AlertTriangle,
-  BarChart3,
-  Boxes,
+
   ClipboardCheck,
   MessageSquare,
   Users,
@@ -14,9 +12,9 @@ import {
   Receipt,
   HeartPulse,
   GraduationCap,
-  BookOpen
+
 } from "lucide-react";
-import { formatCurrency, numberFormatter } from "@/lib/costing";
+import { numberFormatter } from "@/lib/costing";
 import type { AcademicDashboardTotals } from "@/lib/academic-dashboard";
 import { demoPedidos, demoMesas } from "@/lib/demo-data-pos";
 
