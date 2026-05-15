@@ -28,19 +28,21 @@ export function MetricCard({
   }[tone];
 
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-black/[0.03] dark:border-white/10 dark:bg-white/[0.02] dark:ring-white/[0.02]">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
+    <article className="min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white p-2 shadow-sm ring-1 ring-black/[0.03] sm:rounded-xl sm:p-4 dark:border-white/10 dark:bg-white/[0.02] dark:ring-white/[0.02]">
+      <div className="flex min-w-0 items-start justify-between gap-1 sm:gap-3">
+        <span className="min-w-0 truncate text-[7px] font-bold uppercase leading-tight tracking-[0.08em] text-slate-400 sm:text-[10px] sm:tracking-[0.16em] dark:text-slate-500">
           {label}
         </span>
-        <span className={`rounded-lg border p-2 shadow-sm ${toneClass}`}>
-          <Icon className="h-4 w-4" />
+        <span className={`shrink-0 rounded-md border p-1 shadow-sm sm:rounded-lg sm:p-2 ${toneClass}`}>
+          <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
         </span>
       </div>
-      <div className="mt-4 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+      <div className="mt-2 truncate text-sm font-extrabold tracking-tight text-slate-900 sm:mt-4 sm:text-3xl dark:text-white">
         {value}
       </div>
-      <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">{detail}</p>
+      <p className="mt-1 hidden text-xs font-medium leading-tight text-slate-500 sm:block dark:text-slate-400">
+        {detail}
+      </p>
     </article>
   );
 }
@@ -97,9 +99,9 @@ export function AreaStatusBadge({
 
 export function CompactStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50/50 p-3 dark:border-white/5 dark:bg-white/[0.02]">
-      <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{label}</div>
-      <div className="mt-1 font-bold text-slate-900 dark:text-white tracking-tight">{value}</div>
+    <div className="min-w-0 overflow-hidden rounded-lg border border-slate-100 bg-slate-50/50 p-2 sm:p-3 dark:border-white/5 dark:bg-white/[0.02]">
+      <div className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-400 sm:text-[10px] dark:text-slate-500">{label}</div>
+      <div className="mt-1 truncate text-sm font-bold tracking-tight text-slate-900 sm:text-base dark:text-white">{value}</div>
     </div>
   );
 }

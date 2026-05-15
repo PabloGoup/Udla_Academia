@@ -86,16 +86,14 @@ img {
     min-width: 0;
   }
 
-  .academic-mobile-safe .grid {
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
   .academic-mobile-safe h1,
   .academic-mobile-safe h2,
   .academic-mobile-safe h3,
   .academic-mobile-safe p,
   .academic-mobile-safe span,
-  .academic-mobile-safe button {
+  .academic-mobile-safe button,
+  .academic-mobile-safe label,
+  .academic-mobile-safe div {
     overflow-wrap: anywhere;
   }
 
@@ -103,5 +101,18 @@ img {
   .academic-mobile-safe [class*="p-7"],
   .academic-mobile-safe [class*="p-8"] {
     padding: 1rem;
+  }
+
+  .academic-mobile-safe .grid.grid-cols-4 {
+    gap: 0.45rem;
+  }
+
+  .academic-mobile-safe .grid.grid-cols-4 > * {
+    min-width: 0;
+  }
+
+  .academic-mobile-safe .grid.grid-cols-4 article,
+  .academic-mobile-safe .grid.grid-cols-4 > div {
+    overflow: hidden;
   }
 }

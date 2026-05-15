@@ -130,7 +130,7 @@ export default function PerfilAcademicoPage() {
             sede: metadata.sede ?? DEMO_PERFIL.sede,
             campus: metadata.campus ?? DEMO_PERFIL.campus,
             rol: data.rol_academico ?? DEMO_PERFIL.rol,
-            foto_perfil_url: metadata.foto_perfil_url ?? DEMO_PERFIL.foto_perfil_url,
+            foto_perfil_url: data.foto_perfil_url ?? metadata.foto_perfil_url ?? DEMO_PERFIL.foto_perfil_url,
             ultima_conexion: metadata.ultima_conexion ?? DEMO_PERFIL.ultima_conexion,
           }
         : {
@@ -236,6 +236,31 @@ export default function PerfilAcademicoPage() {
       console.error("Error guardando metadata del perfil:", error);
       setSaving(false);
       setMessage(`No se pudieron guardar los datos del perfil: ${error.message}`);
+      return;
+    }
+
+    const emailInstitucional = (user.email || "").trim().toLowerCase();
+    const { error: profileError } = await supabase
+      .from("perfiles_academicos")
+      .update({
+        foto_perfil_url: fotoUrl,
+        fecha_actualizacion: new Date().toISOString(),
+      })
+      .or(`id_usuario.eq.${user.id},correo.eq.${emailInstitucional}`);
+
+    if (profileError) {
+      if (profileError.message.includes("foto_perfil_url")) {
+        setPerfil((prev) => ({ ...prev, ...metadataPayload }));
+        setPassword("");
+        setConfirmPassword("");
+        setSaving(false);
+        setMessage("Perfil actualizado. Ejecuta la migración de foto_perfil_url para sincronizar la imagen con los listados académicos.");
+        return;
+      }
+
+      console.error("Error guardando foto en perfil académico:", profileError);
+      setSaving(false);
+      setMessage(`La foto se subió, pero no se pudo sincronizar con el perfil académico: ${profileError.message}`);
       return;
     }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FileUp, Plus, Search, Upload, UserPlus, Users } from "lucide-react";
+import { Plus, Search, Upload, UserPlus, Users } from "lucide-react";
 import type { Usuario } from "@/lib/academic-types";
 import {
   listarAlumnos,
@@ -21,6 +21,34 @@ import {
   OperationToast,
   StatusBadge,
 } from "@/components/ui/academic-ui-kit";
+
+function getInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+function StudentAvatar({ alumno }: { alumno: Usuario }) {
+  if (alumno.foto_perfil_url) {
+    return (
+      <div
+        className="h-11 w-11 shrink-0 rounded-full border border-slate-200 bg-cover bg-center shadow-sm dark:border-white/10"
+        style={{ backgroundImage: `url("${alumno.foto_perfil_url}")` }}
+        aria-label={`Foto de ${alumno.nombre}`}
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-orange-100 bg-orange-50 text-xs font-black text-[var(--udla-orange)] dark:border-orange-500/20 dark:bg-orange-500/10">
+      {getInitials(alumno.nombre)}
+    </div>
+  );
+}
 
 export function StudentManager() {
   const [alumnos, setAlumnos] = useState<Usuario[]>([]);
@@ -150,16 +178,26 @@ export function StudentManager() {
             </div>
           ) : (
             <>
-              <div className="hidden items-center gap-4 border-b border-slate-200 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 md:grid md:grid-cols-[1fr_1fr_100px_100px_80px] dark:border-white/10 dark:text-slate-400">
+              <div className="hidden items-center gap-4 border-b border-slate-200 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-slate-600 md:grid md:grid-cols-[minmax(240px,1.2fr)_1fr_100px_110px_90px] dark:border-white/10 dark:text-slate-400">
                 <span>Nombre</span><span>Correo</span><span>Sección</span><span>ID</span><span>Estado</span>
               </div>
               <div className="divide-y divide-slate-200 dark:divide-white/5">
                 {filteredAlumnos.map((alumno) => (
-                  <div key={alumno.id_usuario} className="grid items-center gap-2 px-5 py-3 md:grid-cols-[1fr_1fr_100px_100px_80px] md:gap-4">
-                    <div className="text-sm font-medium text-slate-900 dark:text-white">{alumno.nombre}</div>
-                    <div className="text-sm font-medium text-slate-600 truncate dark:text-slate-400">{alumno.correo}</div>
-                    <div className="text-xs font-medium text-slate-600 dark:text-slate-400">{alumno.seccion ?? "—"}</div>
-                    <div className="text-xs font-medium text-slate-600 truncate dark:text-slate-400">{alumno.identificador_institucional ?? "—"}</div>
+                  <div key={alumno.id_usuario} className="grid items-center gap-3 px-5 py-4 md:grid-cols-[minmax(240px,1.2fr)_1fr_100px_110px_90px] md:gap-4">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <StudentAvatar alumno={alumno} />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-bold text-slate-900 dark:text-white">{alumno.nombre}</div>
+                        <div className="truncate text-xs font-semibold text-slate-500 md:hidden">{alumno.correo}</div>
+                      </div>
+                    </div>
+                    <div className="hidden truncate text-sm font-medium text-slate-600 dark:text-slate-400 md:block">{alumno.correo}</div>
+                    <div className="text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      <span className="md:hidden text-slate-400">Sección: </span>{alumno.seccion ?? "—"}
+                    </div>
+                    <div className="truncate text-xs font-bold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+                      <span className="md:hidden text-slate-400">ID: </span>{alumno.identificador_institucional ?? "—"}
+                    </div>
                     <div><StatusBadge label={alumno.estado} tone={alumno.estado === "activo" ? "emerald" : "zinc"} /></div>
                   </div>
                 ))}

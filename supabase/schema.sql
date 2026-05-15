@@ -1,3 +1,8 @@
+-- IMPORTANTE para bases existentes:
+-- Si ya tenias public.app_role creado sin el valor "master", ejecuta primero
+-- supabase/preflight.sql en un Run separado. PostgreSQL exige confirmar el
+-- nuevo valor del enum antes de usarlo en inserts, policies o casts.
+
 create extension if not exists pgcrypto;
 
 do $$
@@ -12,6 +17,12 @@ begin
     'chef',
     'warehouse'
   );
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter type public.app_role add value if not exists 'master' before 'administrator';
 exception when duplicate_object then null;
 end $$;
 
@@ -1634,6 +1645,7 @@ create table if not exists public.perfiles_academicos (
     check (rol_academico in ('administrador', 'profesor', 'alumno', 'comensal')),
   identificador_institucional text,
   seccion text,
+  foto_perfil_url text,
   estado text not null default 'activo'
     check (estado in ('activo', 'inactivo', 'suspendido')),
   fecha_creacion timestamptz not null default now(),
@@ -1641,6 +1653,9 @@ create table if not exists public.perfiles_academicos (
   unique (id_usuario),
   unique (id_institucion, correo)
 );
+
+alter table public.perfiles_academicos
+  add column if not exists foto_perfil_url text;
 
 create table if not exists public.cursos (
   id_curso uuid primary key default gen_random_uuid(),
@@ -2415,6 +2430,20 @@ for insert
 to authenticated
 with check (
   public.current_academic_role() in ('alumno', 'profesor', 'master', 'maestro', 'administrator', 'administrador', 'supervisor')
+);
+
+drop policy if exists "usuario actualiza perfil propio" on public.perfiles_academicos;
+create policy "usuario actualiza perfil propio"
+on public.perfiles_academicos
+for update
+to authenticated
+using (
+  id_usuario = auth.uid()
+  or lower(correo) = lower(coalesce(auth.jwt() ->> 'email', ''))
+)
+with check (
+  id_usuario = auth.uid()
+  or lower(correo) = lower(coalesce(auth.jwt() ->> 'email', ''))
 );
 
 drop policy if exists "alumno registra trazabilidad" on public.trazabilidad_academica;

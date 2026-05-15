@@ -61,7 +61,7 @@ export function ActiveSimulationPanel({
   );
 
   return (
-    <div className="flex min-w-0 flex-col gap-4 overflow-hidden animate-in fade-in duration-500 sm:gap-6">
+    <div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden animate-in fade-in duration-500 sm:gap-6">
       {/* Resumen de Métricas */}
       <div className="grid min-w-0 grid-cols-4 gap-2 overflow-hidden sm:gap-4">
         <MetricCard 
@@ -90,9 +90,9 @@ export function ActiveSimulationPanel({
         />
       </div>
 
-      <div className="grid min-w-0 gap-4 overflow-hidden lg:grid-cols-12 lg:items-start sm:gap-6">
+      <div className="grid w-full min-w-0 gap-4 overflow-hidden lg:grid-cols-12 lg:items-start sm:gap-6">
         {/* Columna Principal: Estado y Roles */}
-        <div className="flex min-w-0 flex-col gap-4 overflow-hidden lg:col-span-8 sm:gap-6">
+        <div className="flex w-full min-w-0 flex-col gap-4 overflow-hidden lg:col-span-8 sm:gap-6">
           <AcademicCard className="border-t-4 border-t-emerald-500">
             <AcademicCardHeader 
               title="Centro de Control de Simulación" 
@@ -142,37 +142,50 @@ export function ActiveSimulationPanel({
           </AcademicCard>
 
           <AcademicCard>
-            <AcademicCardHeader 
-              title="Equipo de Trabajo" 
+            <AcademicCardHeader
+              title="Equipo de Trabajo"
               subtitle={`${detail.roles.length} alumnos en sus puestos operativos`}
+              action={
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-slate-600 dark:bg-white/10 dark:text-slate-300">
+                  Scroll lateral
+                </span>
+              }
             />
             <AcademicCardBody className="p-0">
-              <div className="grid min-w-0 divide-y divide-slate-100 dark:divide-white/5 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-                {detail.roles.map((role) => (
-                  <div
-                    key={role.id_rol_simulacion}
-                    className="flex min-w-0 items-center gap-3 overflow-hidden p-3 transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.02] sm:gap-4 sm:p-4"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[10px] font-black text-white sm:h-10 sm:w-10 sm:text-xs">
-                      {getInitials(role.nombre_alumno)}
-                    </div>
-                    <div className="min-w-0 flex-1 overflow-hidden">
-                      <div className="truncate text-xs font-black uppercase tracking-tight text-slate-900 dark:text-white sm:text-sm">
-                        {getSafeText(role.nombre_alumno, "Alumno sin nombre")}
+              <div className="overflow-x-auto px-3 pb-4 pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-4">
+                <div className="flex w-max gap-3">
+                  {detail.roles.map((role) => (
+                    <article
+                      key={role.id_rol_simulacion}
+                      className="w-36 shrink-0 overflow-hidden rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition hover:shadow-md dark:border-white/5 dark:bg-white/[0.02] sm:w-48 sm:p-4"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[10px] font-black text-white sm:h-10 sm:w-10 sm:text-xs">
+                          {getInitials(role.nombre_alumno)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[10px] font-black uppercase tracking-tight text-slate-900 dark:text-white sm:text-xs">
+                            {getSafeText(role.nombre_alumno, "Alumno")}
+                          </div>
+                          <div className="mt-0.5 truncate text-[9px] font-black uppercase text-orange-600 sm:text-[10px]">
+                            {getSafeText(role.rol_asignado, "Sin rol")}
+                          </div>
+                        </div>
                       </div>
-                      <div className="truncate text-[9px] font-bold uppercase text-orange-600 sm:text-[10px]">
-                        {getSafeText(role.rol_asignado, "Rol no asignado")} · {areaLabels[role.area_trabajo] || getSafeText(role.area_trabajo, "Área no asignada")}
+
+                      <div className="mt-3 rounded-xl bg-orange-50 px-2 py-1.5 text-[9px] font-black uppercase leading-tight text-orange-700 dark:bg-orange-500/10 dark:text-orange-300 sm:text-[10px]">
+                        {areaLabels[role.area_trabajo] || getSafeText(role.area_trabajo, "Área no asignada")}
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    </article>
+                  ))}
+                </div>
               </div>
             </AcademicCardBody>
           </AcademicCard>
         </div>
 
         {/* Columna Lateral: Imprevistos y Evaluaciones */}
-        <div className="flex min-w-0 flex-col gap-4 overflow-hidden lg:col-span-4 sm:gap-6">
+        <div className="flex w-full min-w-0 flex-col gap-4 overflow-hidden lg:col-span-4 sm:gap-6">
           <AcademicCard className="border-l-4 border-l-amber-500">
             <AcademicCardHeader 
               title="Imprevistos Activos" 
@@ -262,16 +275,16 @@ export function ActiveSimulationPanel({
 
 function TraceRow({ trace }: { trace: TrazabilidadAcademica }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-4 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
-      <div className="flex items-start gap-4">
+    <div className="flex w-full min-w-0 flex-col gap-4 overflow-hidden p-3 transition-colors hover:bg-slate-50 dark:hover:bg-white/[0.02] sm:flex-row sm:items-center sm:justify-between sm:p-4">
+      <div className="flex min-w-0 items-start gap-3 overflow-hidden sm:gap-4">
         <div className="h-10 w-10 shrink-0 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500">
           <Activity className="h-4 w-4" />
         </div>
-        <div>
-          <div className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <div className="truncate text-[10px] font-black uppercase tracking-tight text-slate-900 dark:text-white sm:text-xs">
             {trace.modulo} · {trace.accion}
           </div>
-          <p className="mt-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+          <p className="mt-0.5 line-clamp-2 text-[10px] font-medium leading-relaxed text-slate-500 dark:text-slate-400 sm:text-xs">
             {trace.observacion || "Acción registrada en el simulador."}
           </p>
           <div className="mt-2 text-[10px] font-black text-slate-400 uppercase tracking-tighter sm:hidden">

@@ -46,13 +46,13 @@ export function DashboardMetrics({
   }, []);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-5 sm:gap-8">
       {/* ───── PANEL OPERATIVO EN VIVO ───── */}
       <div>
         <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2">
           <Activity className="h-4 w-4" /> En vivo (Operacional del Restaurante)
         </h2>
-        <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
           <MetricCard
             label="Ventas en Tiempo Real"
             value={`$${opStats.ventas.toLocaleString("es-CL")}`}
@@ -93,7 +93,7 @@ export function DashboardMetrics({
         <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2">
           <GraduationCap className="h-4 w-4" /> Métricas del Curso (Evaluación Académica)
         </h2>
-        <div className="grid grid-cols-4 gap-2 sm:gap-3">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
           <MetricCard
             label="Simulaciones"
             value={numberFormatter.format(totals.simulaciones)}
@@ -152,16 +152,16 @@ function MetricCard({
   textClass?: string;
 }) {
   return (
-    <div className={`col-span-1 min-w-0 overflow-hidden flex flex-col gap-2 rounded-xl border p-2 shadow-sm ring-1 ring-black/[0.02] transition-all hover:shadow-md sm:gap-3 sm:p-5 dark:ring-white/[0.02] ${colorClass}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-[8px] font-bold uppercase leading-tight tracking-[0.08em] opacity-60 sm:text-[10px]">
+    <div className={`col-span-1 flex min-w-0 flex-col gap-1 overflow-hidden rounded-lg border p-1.5 shadow-sm ring-1 ring-black/[0.02] transition-all hover:shadow-md sm:gap-3 sm:rounded-xl sm:p-5 dark:ring-white/[0.02] ${colorClass}`}>
+      <div className="flex min-w-0 items-start justify-between gap-1">
+        <span className="min-w-0 truncate text-[6.5px] font-bold uppercase leading-tight tracking-[0.04em] opacity-60 sm:text-[10px] sm:tracking-[0.08em]">
           {label}
         </span>
-        <div className={`p-2 rounded-lg bg-white shadow-sm ring-1 ring-black/5 dark:bg-black/20 ${textClass}`}>
-          <Icon className="h-4 w-4" />
+        <div className={`shrink-0 rounded-md bg-white p-1 shadow-sm ring-1 ring-black/5 sm:rounded-lg sm:p-2 dark:bg-black/20 ${textClass}`}>
+          <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
         </div>
       </div>
-      <div className={`text-sm font-extrabold leading-none tracking-tight sm:text-3xl ${textClass}`}>
+      <div className={`truncate text-sm font-extrabold leading-none tracking-tight sm:text-3xl ${textClass}`}>
         {value}
       </div>
       <div className="hidden text-[9px] font-bold uppercase leading-tight tracking-wide opacity-50 sm:block sm:text-[10px]">

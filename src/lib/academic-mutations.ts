@@ -198,30 +198,61 @@ export async function listarClases(id_curso?: string): Promise<Clase[]> {
 
 /* ───────────────── Usuarios (Alumnos) ───────────────── */
 
+type AlumnoRow = {
+  id_perfil: string;
+  id_usuario: string | null;
+  nombre_completo: string;
+  correo: string;
+  rol_academico: Usuario["rol"];
+  seccion: string | null;
+  identificador_institucional: string | null;
+  foto_perfil_url?: string | null;
+  estado: Usuario["estado"];
+  fecha_creacion: string;
+};
+
 export async function listarAlumnos(seccion?: string): Promise<Usuario[]> {
   if (!isSupabaseConfigured()) {
     const alumnos = localUsuarios.filter((u) => u.rol === "alumno");
     return seccion ? alumnos.filter((a) => a.seccion === seccion) : alumnos;
   }
 
-  let query = getSupabaseBrowserClient()
+  const supabase = getSupabaseBrowserClient();
+  let query = supabase
     .from("perfiles_academicos")
-    .select("id_perfil,id_usuario,nombre_completo,correo,rol_academico,seccion,identificador_institucional,estado,fecha_creacion")
+    .select("id_perfil,id_usuario,nombre_completo,correo,rol_academico,seccion,identificador_institucional,foto_perfil_url,estado,fecha_creacion")
     .eq("rol_academico", "alumno")
     .order("nombre_completo");
 
   if (seccion) query = query.eq("seccion", seccion);
 
-  const { data, error } = await query;
+  const { data, error: queryError } = await query;
+  let error = queryError;
+  let rows = data as AlumnoRow[] | null;
+  if (error && error.message.includes("foto_perfil_url")) {
+    let fallbackQuery = supabase
+      .from("perfiles_academicos")
+      .select("id_perfil,id_usuario,nombre_completo,correo,rol_academico,seccion,identificador_institucional,estado,fecha_creacion")
+      .eq("rol_academico", "alumno")
+      .order("nombre_completo");
+
+    if (seccion) fallbackQuery = fallbackQuery.eq("seccion", seccion);
+
+    const fallback = await fallbackQuery;
+    rows = fallback.data as AlumnoRow[] | null;
+    error = fallback.error;
+  }
+
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((r) => ({
+  return (rows ?? []).map((r) => ({
     id_usuario: r.id_usuario ?? r.id_perfil,
     nombre: r.nombre_completo,
     correo: r.correo,
     rol: r.rol_academico,
     seccion: r.seccion ?? undefined,
     identificador_institucional: r.identificador_institucional ?? undefined,
+    foto_perfil_url: r.foto_perfil_url ?? null,
     estado: r.estado as "activo" | "inactivo" | "suspendido",
     fecha_creacion: r.fecha_creacion,
   }));

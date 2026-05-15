@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AcademicPageShell } from "@/components/academic/academic-page-shell";
 import { StudentAcademicDashboard } from "@/components/academic/student-dashboard";
 
 export const metadata: Metadata = {
@@ -8,5 +9,12 @@ export const metadata: Metadata = {
 };
 
 export default function AcademicStudentPage() {
-  return <StudentAcademicDashboard />;
+  return (
+    <AcademicPageShell
+      title="Portal alumno"
+      subtitle="Vista conectada de rol, área, tareas, evaluaciones e historial de participación."
+    >
+      <StudentAcademicDashboard />
+    </AcademicPageShell>
+  );
 }

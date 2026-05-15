@@ -46,6 +46,7 @@ function construirPanelAlumnoDemo(idPerfil?: string): PanelAlumnoAcademico | nul
     rol_academico: "alumno",
     identificador_institucional: usuarioDemo?.identificador_institucional,
     seccion: usuarioDemo?.seccion ?? "RC24",
+    foto_perfil_url: usuarioDemo?.foto_perfil_url ?? null,
     estado: "activo",
   };
 
@@ -144,10 +145,31 @@ export async function obtenerDetalleSimulacionAcademica(
 
   if (areasRes.error) throw new Error(areasRes.error.message);
 
+  const rawRoles = (rolesRes.data ?? []) as RolSimulacionDetalle[];
+  const studentIds = rawRoles.map((role) => role.id_alumno).filter(Boolean);
+  const { data: studentProfiles } = studentIds.length
+    ? await supabase
+        .from("perfiles_academicos")
+        .select("id_perfil,nombre_completo,correo,foto_perfil_url")
+        .in("id_perfil", studentIds)
+    : { data: [] };
+  const studentsById = new Map(
+    (studentProfiles ?? []).map((student) => [student.id_perfil, student]),
+  );
+  const roles = rawRoles.map((role) => {
+    const student = studentsById.get(role.id_alumno);
+    return {
+      ...role,
+      nombre_alumno: role.nombre_alumno ?? student?.nombre_completo ?? "Alumno",
+      correo_alumno: role.correo_alumno ?? student?.correo,
+      foto_perfil_url: role.foto_perfil_url ?? student?.foto_perfil_url ?? null,
+    };
+  });
+
   return {
     id_simulacion,
     areas: (areasRes.data ?? []) as AreaSimulacion[],
-    roles: (rolesRes.data ?? []) as RolSimulacionDetalle[],
+    roles,
     evaluaciones: (evaluRes.data ?? []) as EvaluacionAcademica[],
     imprevistos: (impreRes.data ?? []) as ImprevistoSimulacion[],
     trazabilidad: (trazaRes.data ?? []) as TrazabilidadAcademica[],

@@ -36,6 +36,7 @@ export interface AuthProfile {
   email: string;
   name: string;
   role: RoleId;
+  avatarUrl?: string | null;
 }
 
 export interface CashMovementDraft {
@@ -171,6 +172,10 @@ type DbUserProfile = {
   role_id: string;
 };
 
+type DbAcademicProfileAvatar = {
+  foto_perfil_url: string | null;
+};
+
 export async function getCurrentAuthProfile(): Promise<AuthProfile | null> {
   if (!isSupabaseConfigured()) {
     return null;
@@ -191,11 +196,22 @@ export async function getCurrentAuthProfile(): Promise<AuthProfile | null> {
     .eq("id", authData.user.id)
     .maybeSingle();
 
+  const { data: academicProfile } = await supabase
+    .from("perfiles_academicos")
+    .select("foto_perfil_url")
+    .or(`id_usuario.eq.${authData.user.id},correo.eq.${authData.user.email ?? ""}`)
+    .maybeSingle();
+
   const profile = data as DbUserProfile | null;
+  const academicAvatar = academicProfile as DbAcademicProfileAvatar | null;
   const metadataRole =
     typeof authData.user.app_metadata?.role === "string"
       ? authData.user.app_metadata.role
       : undefined;
+  const metadataAvatar =
+    typeof authData.user.user_metadata?.foto_perfil_url === "string"
+      ? authData.user.user_metadata.foto_perfil_url
+      : null;
 
   return {
     id: authData.user.id,
@@ -207,6 +223,7 @@ export async function getCurrentAuthProfile(): Promise<AuthProfile | null> {
         : authData.user.email?.split("@")[0]) ??
       "Operador",
     role: toRoleId(profile?.role_id ?? metadataRole),
+    avatarUrl: academicAvatar?.foto_perfil_url ?? metadataAvatar,
   };
 }
 

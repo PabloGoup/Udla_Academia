@@ -425,7 +425,7 @@ export function MenuProductsPanel() {
               </FormField>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3">
               <FormField label="Receta asociada">
                 <Select
                   value={editorDraft.recipeId ?? ""}
@@ -447,16 +447,6 @@ export function MenuProductsPanel() {
                     </option>
                   ))}
                 </Select>
-              </FormField>
-              <FormField label="Foto URL">
-                <Input
-                  value={editorDraft.imageUrl}
-                  onChange={(event) =>
-                    setEditorDraft((prev) =>
-                      prev ? { ...prev, imageUrl: event.target.value } : prev,
-                    )
-                  }
-                />
               </FormField>
             </div>
 

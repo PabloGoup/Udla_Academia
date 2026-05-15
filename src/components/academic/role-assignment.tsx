@@ -31,6 +31,34 @@ const ROLES_PREDEFINIDOS = [
   "pastelero",
 ];
 
+function getInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+function StudentAvatar({ alumno, name }: { alumno?: Usuario; name: string }) {
+  if (alumno?.foto_perfil_url) {
+    return (
+      <div
+        className="h-10 w-10 shrink-0 rounded-full border border-slate-200 bg-cover bg-center shadow-sm dark:border-white/10"
+        style={{ backgroundImage: `url("${alumno.foto_perfil_url}")` }}
+        aria-label={`Foto de ${name}`}
+      />
+    );
+  }
+
+  return (
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-orange-100 bg-orange-50 text-[11px] font-black text-[var(--udla-orange)] dark:border-orange-500/20 dark:bg-orange-500/10">
+      {getInitials(name)}
+    </div>
+  );
+}
+
 interface RoleAssignmentProps {
   id_simulacion: string;
   onRolesChanged?: () => void;
@@ -70,6 +98,7 @@ export function RoleAssignment({ id_simulacion, onRolesChanged }: RoleAssignment
 
   const assignedIds = new Set(roles.map((r) => r.id_alumno));
   const availableAlumnos = alumnos.filter((a) => !assignedIds.has(a.id_usuario));
+  const selectedAlumnoData = alumnos.find((alumno) => alumno.id_usuario === selectedAlumno);
 
   const rolesByArea = new Map<string, RolSimulacionDetalle[]>();
   for (const r of roles) {
@@ -123,9 +152,15 @@ export function RoleAssignment({ id_simulacion, onRolesChanged }: RoleAssignment
                     <div className="divide-y divide-slate-200 dark:divide-white/5">
                       {areaRoles.map((rol) => (
                         <div key={rol.id_rol_simulacion} className="flex items-center justify-between p-4">
-                          <div>
-                            <div className="text-sm font-bold text-slate-900 dark:text-white">{rol.nombre_alumno}</div>
-                            <div className="text-xs font-bold text-slate-500 uppercase">{rol.rol_asignado}</div>
+                          <div className="flex min-w-0 items-center gap-3">
+                            <StudentAvatar
+                              alumno={alumnos.find((alumno) => alumno.id_usuario === rol.id_alumno)}
+                              name={rol.nombre_alumno}
+                            />
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-bold text-slate-900 dark:text-white">{rol.nombre_alumno}</div>
+                              <div className="text-xs font-bold text-slate-500 uppercase">{rol.rol_asignado}</div>
+                            </div>
                           </div>
                           <button className="text-slate-400 hover:text-red-500 transition"><Trash2 className="h-4 w-4" /></button>
                         </div>
@@ -143,8 +178,23 @@ export function RoleAssignment({ id_simulacion, onRolesChanged }: RoleAssignment
         <div className="flex flex-col gap-4">
           <FormField label="Alumno"><Select value={selectedAlumno} onChange={(e) => setSelectedAlumno(e.target.value)}>
             <option value="">Seleccionar alumno…</option>
-            {availableAlumnos.map(a => <option key={a.id_usuario} value={a.id_usuario}>{a.nombre}</option>)}
+            {availableAlumnos.map(a => (
+              <option key={a.id_usuario} value={a.id_usuario}>
+                {a.nombre} · {a.identificador_institucional ?? a.correo}
+              </option>
+            ))}
           </Select></FormField>
+          {selectedAlumnoData && (
+            <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+              <StudentAvatar alumno={selectedAlumnoData} name={selectedAlumnoData.nombre} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-slate-900 dark:text-white">{selectedAlumnoData.nombre}</p>
+                <p className="truncate text-xs font-semibold text-slate-500">
+                  {selectedAlumnoData.identificador_institucional ?? "Sin ID"} · {selectedAlumnoData.correo}
+                </p>
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="Área de trabajo"><Select value={selectedArea} onChange={(e) => setSelectedArea(e.target.value)}>
               <option value="">Seleccionar área…</option>

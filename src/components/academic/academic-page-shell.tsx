@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpen,
   BookCopy,
-  GraduationCap,
   LayoutDashboard,
   Package,
   MonitorPlay,
@@ -28,8 +27,10 @@ import {
   Sun,
   Moon,
   Menu,
-  X,
   LogIn,
+  Building2,
+  Globe2,
+  PanelLeftClose,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState, type FormEvent } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase";
@@ -76,6 +77,18 @@ interface AcademicPageShellProps {
   children: ReactNode;
 }
 
+function getInitials(name?: string | null) {
+  const cleanName = name?.trim();
+  if (!cleanName) return "UA";
+
+  return cleanName
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
 const navByRole: Record<RoleSimulation, ReadonlyArray<(typeof navItems)[number]>> = {
   master: navItems,
   administrador: navItems.filter((item) => item.href !== "/academico/alumno"),
@@ -106,6 +119,8 @@ export function AcademicPageShell({
   const [darkMode, setDarkMode] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+  const [desktopSidebarHovered, setDesktopSidebarHovered] = useState(false);
   const [simulatedRole, setSimulatedRole] = useState<RoleSimulation>("master");
   const [authProfile, setAuthProfile] = useState<AuthProfile | null>(null);
   const [authState, setAuthState] = useState<"anonymous" | "checking" | "authenticated">("anonymous");
@@ -176,6 +191,27 @@ export function AcademicPageShell({
     setSidebarOpen(false);
   }, [pathname]);
 
+  useEffect(() => {
+    if (!desktopSidebarOpen) return;
+    if (desktopSidebarHovered) return;
+    if (!window.matchMedia("(min-width: 1024px)").matches) return;
+
+    const closeTimer = window.setTimeout(() => {
+      setDesktopSidebarOpen(false);
+    }, 5000);
+
+    return () => window.clearTimeout(closeTimer);
+  }, [desktopSidebarHovered, desktopSidebarOpen, pathname]);
+
+  const toggleSidebar = () => {
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      setDesktopSidebarOpen((current) => !current);
+      return;
+    }
+
+    setSidebarOpen(true);
+  };
+
   const switchSimulatedRole = (roleId: RoleSimulation) => {
     setSimulatedRole(roleId);
     localStorage.setItem("udla-role-sim", roleId);
@@ -195,53 +231,74 @@ export function AcademicPageShell({
         {/* Mobile Sidebar Overlay */}
         {sidebarOpen && (
           <div
-            className="fixed inset-0 z-40 bg-white-900/50 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm lg:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
-        {/* ───── Sidebar ───── */}
-        <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 transform flex-col border-r border-slate-200 bg-orange-50/40 p-4 transition-transform duration-300 dark:border-white/10 dark:bg-[#151617] lg:translate-x-0 lg:static lg:h-screen lg:shrink-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        {desktopSidebarOpen && (
+          <button
+            type="button"
+            aria-label="Cerrar menú"
+            className="fixed inset-y-0 left-72 right-0 z-20 hidden cursor-default bg-transparent lg:block"
+            onClick={() => setDesktopSidebarOpen(false)}
+          />
+        )}
 
-          <div className="flex items-center justify-between mb-6 px-2 lg:hidden">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500 text-white shadow-sm">
-                <GraduationCap className="h-5 w-5" />
-              </div>
-              <span className="font-bold text-slate-800 dark:text-white">UDLA</span>
-            </div>
+        {/* ───── Sidebar ───── */}
+        <aside className={`fixed inset-y-0 left-0 z-50 flex w-[86vw] max-w-[360px] transform flex-col overflow-hidden border-r border-black/20 bg-[#252525] text-white transition-all duration-300 dark:border-white/10 lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:shrink-0 lg:translate-x-0 ${
+          desktopSidebarOpen ? "lg:w-72" : "lg:w-0 lg:border-r-0 lg:pointer-events-none"
+        } ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+          onMouseEnter={() => setDesktopSidebarHovered(true)}
+          onMouseLeave={() => setDesktopSidebarHovered(false)}
+        >
+
+          <div className="relative flex h-[76px] shrink-0 items-center justify-start bg-[var(--udla-orange)]  px-10">
+            <Image
+              src="/logo-original-udla.png"
+              alt="UDLA"
+              width={180}
+              height={52}
+              className="h-[54px] w-auto max-w-[210px] object-contain brightness-0 invert"
+              priority
+            />
             <button
-              className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white"
+              className="absolute right-5 flex h-10 w-10 items-center justify-center text-black lg:hidden"
               onClick={() => setSidebarOpen(false)}
+              type="button"
+              aria-label="Cerrar menú"
             >
-              <X className="h-6 w-6" />
+              <PanelLeftClose className="h-6 w-6" />
             </button>
           </div>
 
-          {/* Perfil Activo */}
-          <div className="mb-6 rounded-xl p-4 border border-white bg-white dark:border-white/10 dark:bg-white/5">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-              Perfil Activo
-            </p>
-            <div className="mt-3 rounded-lg p-2 dark:border-white/10 dark:bg-white">
-              <Image
-                src="/logo-original-udla.png"
-                alt="UDLA"
-                width={220}
-                height={64}
-                className="h-auto w-full object-contain"
+          <Link
+            href="/academico/perfil"
+            className="flex shrink-0 items-center gap-4 border-b border-black/30 px-5 py-4 transition hover:bg-white/5"
+          >
+            {authProfile?.avatarUrl ? (
+              <div
+                className="h-11 w-11 shrink-0 rounded-full border border-white/15 bg-cover bg-center shadow-inner"
+                style={{ backgroundImage: `url("${authProfile.avatarUrl}")` }}
+                aria-label={`Foto de perfil de ${authProfile.name}`}
               />
+            ) : (
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-sm font-black text-white/75">
+                {getInitials(authProfile?.name)}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold uppercase tracking-wide text-white/90">
+                {authProfile?.name ?? "Usuario académico"}
+              </p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/45">
+                {activeRoleSimulation.label}
+              </p>
             </div>
-            <p className="mt-3 text-base font-bold text-slate-900 dark:text-white">
-              {activeRoleSimulation.label}
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-600 dark:text-slate-400">
-              {activeRoleSimulation.description}
-            </p>
-          </div>
+          </Link>
 
           {/* Navigation Links */}
-          <nav className="flex flex-1 flex-col gap-1.5 overflow-y-auto">
+          <nav className="flex flex-1 flex-col gap-0 overflow-y-auto py-3">
             {availableNavItems.map(({ href, label, icon: Icon }) => {
               const isActive =
                 pathname === href ||
@@ -251,14 +308,14 @@ export function AcademicPageShell({
                 <Link
                   key={href}
                   href={href}
-                  className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all ${isActive
-                    ? "bg-[var(--udla-orange)] text-white shadow-md shadow-orange-500/20"
-                    : "text-black hover:bg-orange-50 hover:text-orange-600 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white"
+                  className={`group flex h-14 items-center gap-5 border-l-[5px] px-5 text-[17px] font-medium transition-all lg:h-12 lg:text-[15px] ${isActive
+                    ? "border-black bg-[var(--udla-orange)] text-black"
+                    : "border-transparent text-white/80 hover:bg-white/5 hover:text-white"
                     }`}
                 >
-                  <span className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${isActive ? "bg-white/20" : "bg-orange-50 dark:bg-orange-500/10"
+                  <span className={`flex h-8 w-8 items-center justify-center transition-colors ${isActive ? "text-black" : "text-white/85"
                     }`}>
-                    <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-orange-600"}`} />
+                    <Icon className="h-6 w-6 lg:h-5 lg:w-5" />
                   </span>
                   {label}
                 </Link>
@@ -266,11 +323,10 @@ export function AcademicPageShell({
             })}
           </nav>
 
-          {/* Version/Footer */}
-          <div className="mt-auto pt-4 border-t border-slate-100 dark:border-white/5">
-            <div className="flex items-center gap-2 px-2 text-[10px] font-medium text-slate-400">
+          <div className="border-t border-black/30 px-5 py-4">
+            <div className="flex items-center gap-2 text-[10px] font-medium text-white/35">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-               GoUp Soluciones IT $ RPA v.07
+              GoUp Soluciones IT $ RPA v.07
             </div>
           </div>
         </aside>
@@ -290,8 +346,10 @@ export function AcademicPageShell({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <button
-                    onClick={() => setSidebarOpen(true)}
-                    className="lg:hidden flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300"
+                    onClick={toggleSidebar}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--udla-orange)] text-white shadow-sm shadow-orange-500/20 transition hover:bg-orange-600 active:scale-95"
+                    type="button"
+                    aria-label="Alternar menú"
                   >
                     <Menu className="h-5 w-5" />
                   </button>
@@ -305,15 +363,6 @@ export function AcademicPageShell({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* Status Badges */}
-                  <div className="hidden md:flex items-center gap-2 mr-2">
-                    <StatusBadge
-                      label={supabaseReady ? "Supabase conectado" : "Modo demo"}
-                      tone={supabaseReady ? "emerald" : "rose"}
-                    />
-                    <StatusBadge label="Realtime sin canal" tone="rose" />
-                  </div>
-
                   <div className="relative">
                     {authProfile ? (
                       <div className="flex items-center gap-2">
@@ -419,38 +468,55 @@ export function AcademicPageShell({
           </header>
 
           {/* Page Content */}
-          <main className="academic-mobile-safe mx-auto w-full max-w-[1600px] overflow-x-hidden px-3 py-4 sm:p-8">
-            <div className="mb-8">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-2">
+          <main className="academic-mobile-safe mx-auto w-full max-w-[1600px] flex-1 overflow-x-hidden px-2 py-3 sm:p-8">
+            <div className="mb-4 sm:mb-8">
+              <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400 sm:mb-2 sm:text-[10px] sm:tracking-[0.2em] dark:text-slate-500">
                 ACADEMIA · {title.toUpperCase()}
               </p>
-              <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
                 {title}
               </h1>
               {subtitle && (
-                <p className="mt-3 max-w-3xl text-sm font-medium leading-relaxed text-slate-500 dark:text-slate-400">
+                <p className="mt-2 line-clamp-2 max-w-3xl text-xs font-medium leading-snug text-slate-500 sm:mt-3 sm:text-sm sm:leading-relaxed dark:text-slate-400">
                   {subtitle}
                 </p>
               )}
             </div>
             {children}
           </main>
+
+          <footer className="border-t-4 border-[var(--udla-orange)] bg-[#252525] px-4 py-5 text-white sm:px-8">
+            <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-3 text-sm font-medium text-white/80">
+                <Link
+                  href="https://www.udla.cl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 transition hover:text-white"
+                >
+                  <Building2 className="h-4 w-4 text-white/70" />
+                  Página de la institución
+                </Link>
+                <Link
+                  href="/academico/perfil"
+                  className="inline-flex items-center gap-2 transition hover:text-white"
+                >
+                  <Globe2 className="h-4 w-4 text-white/70" />
+                  Actividad
+                </Link>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-white/50">
+                <span>Privacidad</span>
+                <span>•</span>
+                <span>Condiciones</span>
+                <span>•</span>
+                <span>Accesibilidad</span>
+              </div>
+            </div>
+          </footer>
         </div>
 
       </div>
-    </div>
-  );
-}
-
-function StatusBadge({ label, tone }: { label: string; tone: "emerald" | "rose" }) {
-  const styles = {
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
-    rose: "bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/20",
-  };
-  return (
-    <div className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-bold ${styles[tone]}`}>
-      <div className={`h-1.5 w-1.5 rounded-full ${tone === "emerald" ? "bg-emerald-500" : "bg-rose-500"}`} />
-      {label}
     </div>
   );
 }

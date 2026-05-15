@@ -37,6 +37,7 @@ export interface PerfilAcademico {
   rol_academico: RolUsuario;
   identificador_institucional?: string;
   seccion?: string;
+  foto_perfil_url?: string | null;
   estado: "activo" | "inactivo" | "suspendido";
 }
 
@@ -47,6 +48,7 @@ export interface Usuario {
   rol: RolUsuario;
   seccion?: string;
   identificador_institucional?: string;
+  foto_perfil_url?: string | null;
   estado: "activo" | "inactivo" | "suspendido";
   fecha_creacion: string;
 }
@@ -114,6 +116,7 @@ export interface RolSimulacionDetalle {
   estado: "asignado" | "activo" | "finalizado";
   nombre_alumno: string;
   correo_alumno?: string;
+  foto_perfil_url?: string | null;
 }
 
 // Alias para compatibilidad

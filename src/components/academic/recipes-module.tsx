@@ -679,17 +679,6 @@ export function RecipesModule({ mode }: RecipesModuleProps) {
                   }
                 />
               </FormField>
-              <FormField label="Foto URL" htmlFor="recipe-photo">
-                <Input
-                  id="recipe-photo"
-                  value={editorDraft.photoUrl}
-                  onChange={(event) =>
-                    setEditorDraft((prev) =>
-                      prev ? { ...prev, photoUrl: event.target.value } : prev,
-                    )
-                  }
-                />
-              </FormField>
               <FormField label="Alergenos (coma)" htmlFor="recipe-allergens">
                 <Input
                   id="recipe-allergens"
