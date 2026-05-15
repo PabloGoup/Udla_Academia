@@ -1355,7 +1355,8 @@ function writeError(message: string): OperationResult {
 }
 
 function toRoleId(value?: string): RoleId {
-  return value === "supervisor" ||
+  return value === "master" ||
+    value === "supervisor" ||
     value === "cashier" ||
     value === "waiter" ||
     value === "cook" ||

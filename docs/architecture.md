@@ -96,3 +96,19 @@ La siguiente etapa recomendada es comparar el alcance actual contra el requerimi
 El esquema incluye lectura anonima para que la publishable key pueda alimentar el demo academico sin login. Las escrituras quedan restringidas a usuarios autenticados con rol y se agrupan por area funcional. En una instalacion comercial, la lectura anonima debe reemplazarse por politicas basadas en Supabase Auth y `app_metadata.role`.
 
 La funcion `ensure_current_user_profile()` sincroniza `auth.users` con `public.users` para que RLS pueda resolver el rol desde `app_metadata.role` o desde la tabla publica.
+
+## Capa academica Plan 2
+
+El Plan Academico Personalizado agrega una capa persistente en espanol sobre el motor operativo existente. Esta capa permite modelar institucion, perfiles academicos, cursos, secciones, matriculas, clases, simulaciones, areas de trabajo, grupos, roles por alumno, recetas/productos asociados a la simulacion, evaluaciones, respuestas, imprevistos, feedback de comensal y trazabilidad academica.
+
+La primera version de esta capa queda en `supabase/schema.sql` con tablas como `instituciones`, `perfiles_academicos`, `cursos`, `secciones`, `clases`, `simulaciones`, `roles_simulacion`, `evaluaciones`, `respuestas_evaluacion`, `imprevistos_simulacion`, `feedback_comensal` y `trazabilidad_academica`.
+
+La decision tecnica inicial es no romper el motor operativo ya construido. Por eso `simulacion_recetas` y `simulacion_productos` enlazan temporalmente con las tablas operativas existentes de recetas y productos. La siguiente etapa es conectar pedidos, comandas, ventas, movimientos de bodega y reportes al `id_simulacion`, para que cada operacion del restaurante quede asociada a una clase y a la evidencia del alumno.
+
+Los primeros vinculos operativos ya quedan modelados con `id_simulacion` en pedidos, items de pedido, comandas, movimientos de bodega, caja, compras, documentos, reportes y auditoria. Tambien existen triggers para heredar automaticamente la simulacion desde el pedido o compra, y una funcion `vincular_pedido_a_simulacion()` para asociar operaciones existentes a una simulacion academica.
+
+En TypeScript, los contratos academicos quedan separados en `src/lib/academic-types.ts`, las primeras operaciones de lectura, trazabilidad y vinculacion quedan en `src/lib/academic-operations.ts`, y el armado del dashboard queda en `src/lib/academic-dashboard.ts`. La regla de desarrollo es mantener esta capa separada de la interfaz operativa para evitar que `restaurant-platform.tsx` siga creciendo como archivo monolitico.
+
+La UI academica tambien queda seccionada por modulo dentro de `src/components/academic`: `teacher-dashboard.tsx` solo orquesta estado y carga de datos; `dashboard-metrics.tsx` renderiza indicadores; `active-simulation-panel.tsx` muestra areas, roles, imprevistos, evaluaciones y trazabilidad; `simulation-stage-rail.tsx` representa el avance de estados; `simulation-state-actions.tsx` concentra el control docente para avanzar el estado de la simulacion; `simulation-list.tsx` concentra el listado responsive; y `academic-ui.tsx` agrupa piezas visuales pequeñas reutilizables. Cualquier flujo nuevo de curso, alumno, QR, evaluacion o reporte debe entrar como modulo propio, no como crecimiento de un archivo unico.
+
+El avance de estados academicos queda persistido mediante la funcion SQL `actualizar_estado_simulacion()`, expuesta desde `src/lib/academic-operations.ts`. Esta funcion valida rol academico, actualiza `simulaciones.estado`, marca `fecha_inicio` al iniciar servicio, marca `fecha_cierre` al cerrar o archivar, y registra trazabilidad academica automatica.

@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 let browserClient: SupabaseClient | null = null;
 
 export function isSupabaseConfigured() {
+  if (process.env.NEXT_PUBLIC_USE_DEMO_DATA === "true") return false;
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
       getSupabasePublishableKey(),

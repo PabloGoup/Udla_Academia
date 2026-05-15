@@ -1307,7 +1307,8 @@ function toOrderStatus(value: string): OrderStatus {
 }
 
 function toRoleId(value: string): RoleId {
-  return value === "supervisor" ||
+  return value === "master" ||
+    value === "supervisor" ||
     value === "cashier" ||
     value === "waiter" ||
     value === "cook" ||

@@ -1,4 +1,5 @@
 export type RoleId =
+  | "master"
   | "administrator"
   | "supervisor"
   | "cashier"

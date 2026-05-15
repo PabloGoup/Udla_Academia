@@ -780,6 +780,492 @@ on conflict (id) do update set
   printed_at = excluded.printed_at,
   created_at = excluded.created_at;
 
+insert into public.instituciones (
+  id_institucion, nombre_institucion, rut_institucion, sede, direccion, estado
+) values (
+  '00000000-0000-6100-8000-000000000001',
+  'Universidad de Las Americas',
+  '71.540.800-7',
+  'Campus Santiago Centro',
+  'Laboratorio gastronomico UDLA',
+  'activa'
+)
+on conflict (id_institucion) do update set
+  nombre_institucion = excluded.nombre_institucion,
+  rut_institucion = excluded.rut_institucion,
+  sede = excluded.sede,
+  direccion = excluded.direccion,
+  estado = excluded.estado;
+
+insert into public.perfiles_academicos (
+  id_perfil, id_institucion, nombre_completo, correo, rol_academico,
+  identificador_institucional, seccion, estado
+) values
+  (
+    '00000000-0000-6200-8000-000000000001',
+    '00000000-0000-6100-8000-000000000001',
+    'Rodrigo Fuentes',
+    'rodrigo.fuentes@udla.cl',
+    'profesor',
+    'DOC-001',
+    null,
+    'activo'
+  ),
+  (
+    '00000000-0000-6200-8000-000000000002',
+    '00000000-0000-6100-8000-000000000001',
+    'Valentina Reyes',
+    'valentina.reyes@alumnos.udla.cl',
+    'alumno',
+    'ALU-24001',
+    'RC24',
+    'activo'
+  ),
+  (
+    '00000000-0000-6200-8000-000000000003',
+    '00000000-0000-6100-8000-000000000001',
+    'Camila Soto',
+    'camila.soto@alumnos.udla.cl',
+    'alumno',
+    'ALU-24002',
+    'RC24',
+    'activo'
+  ),
+  (
+    '00000000-0000-6200-8000-000000000004',
+    '00000000-0000-6100-8000-000000000001',
+    'Felipe Araya',
+    'felipe.araya@alumnos.udla.cl',
+    'alumno',
+    'ALU-24003',
+    'RC24',
+    'activo'
+  ),
+  (
+    '00000000-0000-6200-8000-000000000005',
+    '00000000-0000-6100-8000-000000000001',
+    'Daniel Vega',
+    'daniel.vega@alumnos.udla.cl',
+    'alumno',
+    'ALU-24004',
+    'RC24',
+    'activo'
+  )
+on conflict (id_perfil) do update set
+  id_institucion = excluded.id_institucion,
+  nombre_completo = excluded.nombre_completo,
+  correo = excluded.correo,
+  rol_academico = excluded.rol_academico,
+  identificador_institucional = excluded.identificador_institucional,
+  seccion = excluded.seccion,
+  estado = excluded.estado;
+
+insert into public.cursos (
+  id_curso, id_institucion, id_profesor, nombre_curso, asignatura,
+  codigo_curso, periodo, estado
+) values (
+  '00000000-0000-6300-8000-000000000001',
+  '00000000-0000-6100-8000-000000000001',
+  '00000000-0000-6200-8000-000000000001',
+  'Gestion operativa de restaurante',
+  'Taller de simulacion gastronomica',
+  'GAS-402',
+  '2026-1',
+  'activo'
+)
+on conflict (id_curso) do update set
+  id_institucion = excluded.id_institucion,
+  id_profesor = excluded.id_profesor,
+  nombre_curso = excluded.nombre_curso,
+  asignatura = excluded.asignatura,
+  codigo_curso = excluded.codigo_curso,
+  periodo = excluded.periodo,
+  estado = excluded.estado;
+
+insert into public.secciones (
+  id_seccion, id_curso, nombre_seccion, jornada, cupo, estado
+) values (
+  '00000000-0000-6400-8000-000000000001',
+  '00000000-0000-6300-8000-000000000001',
+  'RC24',
+  'Diurna',
+  24,
+  'activa'
+)
+on conflict (id_seccion) do update set
+  id_curso = excluded.id_curso,
+  nombre_seccion = excluded.nombre_seccion,
+  jornada = excluded.jornada,
+  cupo = excluded.cupo,
+  estado = excluded.estado;
+
+insert into public.matriculas (
+  id_matricula, id_seccion, id_alumno, estado
+) values
+  ('00000000-0000-6500-8000-000000000001', '00000000-0000-6400-8000-000000000001', '00000000-0000-6200-8000-000000000002', 'activa'),
+  ('00000000-0000-6500-8000-000000000002', '00000000-0000-6400-8000-000000000001', '00000000-0000-6200-8000-000000000003', 'activa'),
+  ('00000000-0000-6500-8000-000000000003', '00000000-0000-6400-8000-000000000001', '00000000-0000-6200-8000-000000000004', 'activa'),
+  ('00000000-0000-6500-8000-000000000004', '00000000-0000-6400-8000-000000000001', '00000000-0000-6200-8000-000000000005', 'activa')
+on conflict (id_matricula) do update set
+  id_seccion = excluded.id_seccion,
+  id_alumno = excluded.id_alumno,
+  estado = excluded.estado;
+
+insert into public.clases (
+  id_clase, id_curso, id_seccion, id_profesor, nombre_clase, fecha,
+  objetivo, tipo_servicio, estado
+) values (
+  '00000000-0000-6600-8000-000000000001',
+  '00000000-0000-6300-8000-000000000001',
+  '00000000-0000-6400-8000-000000000001',
+  '00000000-0000-6200-8000-000000000001',
+  'Servicio integrado entrada, fondo y barra',
+  '2026-05-14',
+  'Ejecutar un servicio presencial completo con control de bodega, cocina, caja, feedback y trazabilidad.',
+  'Entrada + plato de fondo + bebidas',
+  'activa'
+)
+on conflict (id_clase) do update set
+  id_curso = excluded.id_curso,
+  id_seccion = excluded.id_seccion,
+  id_profesor = excluded.id_profesor,
+  nombre_clase = excluded.nombre_clase,
+  fecha = excluded.fecha,
+  objetivo = excluded.objetivo,
+  tipo_servicio = excluded.tipo_servicio,
+  estado = excluded.estado;
+
+insert into public.simulaciones (
+  id_simulacion, id_clase, nombre_simulacion, tipo_servicio, objetivo,
+  estado, duracion_estimada_minutos, fecha_inicio, configuracion
+) values (
+  '00000000-0000-6700-8000-000000000001',
+  '00000000-0000-6600-8000-000000000001',
+  'Servicio RC24 restaurante escuela',
+  'Restaurante presencial con QR comensal',
+  'Medir desempeno operativo y academico por rol durante servicio real simulado.',
+  'servicio_activo',
+  150,
+  now() - interval '45 minutes',
+  '{"areas":["bodega","cocina","bar","garzon","caja"],"modo":"piloto_plan_2","feedback_obligatorio":true}'::jsonb
+)
+on conflict (id_simulacion) do update set
+  id_clase = excluded.id_clase,
+  nombre_simulacion = excluded.nombre_simulacion,
+  tipo_servicio = excluded.tipo_servicio,
+  objetivo = excluded.objetivo,
+  estado = excluded.estado,
+  duracion_estimada_minutos = excluded.duracion_estimada_minutos,
+  fecha_inicio = excluded.fecha_inicio,
+  configuracion = excluded.configuracion;
+
+insert into public.areas_simulacion (
+  id_area_simulacion, id_simulacion, area_trabajo, responsable, estado, observacion
+) values
+  ('00000000-0000-6800-8000-000000000001', '00000000-0000-6700-8000-000000000001', 'bodega', '00000000-0000-6200-8000-000000000005', 'lista', 'Stock inicial y vencimientos revisados.'),
+  ('00000000-0000-6800-8000-000000000002', '00000000-0000-6700-8000-000000000001', 'cocina', '00000000-0000-6200-8000-000000000002', 'lista', 'Mise en place principal validada.'),
+  ('00000000-0000-6800-8000-000000000003', '00000000-0000-6700-8000-000000000001', 'garzon', '00000000-0000-6200-8000-000000000003', 'lista', 'Carta y disponibilidad informadas.'),
+  ('00000000-0000-6800-8000-000000000004', '00000000-0000-6700-8000-000000000001', 'caja', '00000000-0000-6200-8000-000000000004', 'observada', 'Pendiente cierre de feedback de una mesa.')
+on conflict (id_area_simulacion) do update set
+  id_simulacion = excluded.id_simulacion,
+  area_trabajo = excluded.area_trabajo,
+  responsable = excluded.responsable,
+  estado = excluded.estado,
+  observacion = excluded.observacion;
+
+insert into public.grupos_trabajo (
+  id_grupo, id_simulacion, nombre_grupo, observacion
+) values (
+  '00000000-0000-6900-8000-000000000001',
+  '00000000-0000-6700-8000-000000000001',
+  'Brigada A',
+  'Grupo responsable del primer servicio integrado.'
+)
+on conflict (id_grupo) do update set
+  id_simulacion = excluded.id_simulacion,
+  nombre_grupo = excluded.nombre_grupo,
+  observacion = excluded.observacion;
+
+insert into public.integrantes_grupo (
+  id_integrante, id_grupo, id_alumno
+) values
+  ('00000000-0000-6a00-8000-000000000001', '00000000-0000-6900-8000-000000000001', '00000000-0000-6200-8000-000000000002'),
+  ('00000000-0000-6a00-8000-000000000002', '00000000-0000-6900-8000-000000000001', '00000000-0000-6200-8000-000000000003'),
+  ('00000000-0000-6a00-8000-000000000003', '00000000-0000-6900-8000-000000000001', '00000000-0000-6200-8000-000000000004'),
+  ('00000000-0000-6a00-8000-000000000004', '00000000-0000-6900-8000-000000000001', '00000000-0000-6200-8000-000000000005')
+on conflict (id_integrante) do update set
+  id_grupo = excluded.id_grupo,
+  id_alumno = excluded.id_alumno;
+
+insert into public.roles_simulacion (
+  id_rol_simulacion, id_simulacion, id_alumno, id_grupo,
+  rol_asignado, area_trabajo, permisos, estado
+) values
+  ('00000000-0000-6b00-8000-000000000001', '00000000-0000-6700-8000-000000000001', '00000000-0000-6200-8000-000000000002', '00000000-0000-6900-8000-000000000001', 'Jefe de cocina', 'cocina', '["comandas:leer","recetas:leer","mise_en_place:confirmar"]'::jsonb, 'activo'),
+  ('00000000-0000-6b00-8000-000000000002', '00000000-0000-6700-8000-000000000001', '00000000-0000-6200-8000-000000000003', '00000000-0000-6900-8000-000000000001', 'Garzon lider', 'garzon', '["pedidos:crear","mesas:actualizar","feedback:solicitar"]'::jsonb, 'activo'),
+  ('00000000-0000-6b00-8000-000000000003', '00000000-0000-6700-8000-000000000001', '00000000-0000-6200-8000-000000000004', '00000000-0000-6900-8000-000000000001', 'Caja', 'caja', '["ventas:cerrar","feedback:validar","documentos:imprimir"]'::jsonb, 'activo'),
+  ('00000000-0000-6b00-8000-000000000004', '00000000-0000-6700-8000-000000000001', '00000000-0000-6200-8000-000000000005', '00000000-0000-6900-8000-000000000001', 'Bodega', 'bodega', '["stock:actualizar","mermas:registrar","fifo:validar"]'::jsonb, 'activo')
+on conflict (id_rol_simulacion) do update set
+  id_simulacion = excluded.id_simulacion,
+  id_alumno = excluded.id_alumno,
+  id_grupo = excluded.id_grupo,
+  rol_asignado = excluded.rol_asignado,
+  area_trabajo = excluded.area_trabajo,
+  permisos = excluded.permisos,
+  estado = excluded.estado;
+
+insert into public.simulacion_recetas (
+  id_simulacion_receta, id_simulacion, id_receta, porciones_planificadas
+) values
+  ('00000000-0000-6c00-8000-000000000001', '00000000-0000-6700-8000-000000000001', '00000000-0000-4400-8000-000000000001', 12),
+  ('00000000-0000-6c00-8000-000000000002', '00000000-0000-6700-8000-000000000001', '00000000-0000-4400-8000-000000000002', 9),
+  ('00000000-0000-6c00-8000-000000000003', '00000000-0000-6700-8000-000000000001', '00000000-0000-4400-8000-000000000003', 18)
+on conflict (id_simulacion_receta) do update set
+  id_simulacion = excluded.id_simulacion,
+  id_receta = excluded.id_receta,
+  porciones_planificadas = excluded.porciones_planificadas;
+
+insert into public.simulacion_productos (
+  id_simulacion_producto, id_simulacion, id_producto,
+  cantidad_planificada, cantidad_recibida, observacion
+) values
+  ('00000000-0000-6d00-8000-000000000001', '00000000-0000-6700-8000-000000000001', '00000000-0000-4600-8000-000000000001', 12, 10, 'Ajuste por stock disponible de lomo.'),
+  ('00000000-0000-6d00-8000-000000000002', '00000000-0000-6700-8000-000000000001', '00000000-0000-4600-8000-000000000002', 9, 9, 'Produccion completa autorizada.'),
+  ('00000000-0000-6d00-8000-000000000003', '00000000-0000-6700-8000-000000000001', '00000000-0000-4600-8000-000000000003', 18, 16, 'Dos porciones retenidas por control de frio.'),
+  ('00000000-0000-6d00-8000-000000000004', '00000000-0000-6700-8000-000000000001', '00000000-0000-4600-8000-000000000005', 20, 20, 'Barra operativa.')
+on conflict (id_simulacion_producto) do update set
+  id_simulacion = excluded.id_simulacion,
+  id_producto = excluded.id_producto,
+  cantidad_planificada = excluded.cantidad_planificada,
+  cantidad_recibida = excluded.cantidad_recibida,
+  observacion = excluded.observacion;
+
+insert into public.evaluaciones (
+  id_evaluacion, id_simulacion, id_clase, id_profesor, tipo_evaluacion,
+  titulo, descripcion, rol_objetivo, puntaje_maximo, intentos_permitidos,
+  tiempo_limite_minutos, nota_automatica, correccion_manual, pauta, estado
+) values (
+  '00000000-0000-6e00-8000-000000000001',
+  '00000000-0000-6700-8000-000000000001',
+  '00000000-0000-6600-8000-000000000001',
+  '00000000-0000-6200-8000-000000000001',
+  'rubrica',
+  'Rubrica servicio integrado RC24',
+  'Evalua coordinacion por rol, trazabilidad, inocuidad, tiempos y respuesta ante imprevistos.',
+  null,
+  100,
+  1,
+  45,
+  false,
+  true,
+  '{"criterios":["Trazabilidad","Mise en place","Comandas","Stock","Feedback"],"escala":"1 a 5"}'::jsonb,
+  'publicada'
+)
+on conflict (id_evaluacion) do update set
+  id_simulacion = excluded.id_simulacion,
+  id_clase = excluded.id_clase,
+  id_profesor = excluded.id_profesor,
+  tipo_evaluacion = excluded.tipo_evaluacion,
+  titulo = excluded.titulo,
+  descripcion = excluded.descripcion,
+  rol_objetivo = excluded.rol_objetivo,
+  puntaje_maximo = excluded.puntaje_maximo,
+  intentos_permitidos = excluded.intentos_permitidos,
+  tiempo_limite_minutos = excluded.tiempo_limite_minutos,
+  nota_automatica = excluded.nota_automatica,
+  correccion_manual = excluded.correccion_manual,
+  pauta = excluded.pauta,
+  estado = excluded.estado;
+
+insert into public.respuestas_evaluacion (
+  id_respuesta, id_evaluacion, id_alumno, id_simulacion, intento,
+  respuestas, puntaje, nota, retroalimentacion, corregida_por, fecha_correccion
+) values
+  (
+    '00000000-0000-6f00-8000-000000000001',
+    '00000000-0000-6e00-8000-000000000001',
+    '00000000-0000-6200-8000-000000000002',
+    '00000000-0000-6700-8000-000000000001',
+    1,
+    '{"auto_evaluacion":"Coordine salida de fondos y revise tiempos de cocina.","evidencia":"Comandas A-1048 y A-1049"}'::jsonb,
+    86,
+    6.1,
+    'Buen control de comandas. Mejorar registro de observaciones de temperatura.',
+    '00000000-0000-6200-8000-000000000001',
+    now() - interval '10 minutes'
+  ),
+  (
+    '00000000-0000-6f00-8000-000000000002',
+    '00000000-0000-6e00-8000-000000000001',
+    '00000000-0000-6200-8000-000000000005',
+    '00000000-0000-6700-8000-000000000001',
+    1,
+    '{"auto_evaluacion":"Registre merma de palta y avise faltante de salmon.","evidencia":"Movimiento de bodega y alerta de stock"}'::jsonb,
+    91,
+    6.4,
+    'Muy buen registro de bodega y trazabilidad FIFO.',
+    '00000000-0000-6200-8000-000000000001',
+    now() - interval '8 minutes'
+  )
+on conflict (id_respuesta) do update set
+  id_evaluacion = excluded.id_evaluacion,
+  id_alumno = excluded.id_alumno,
+  id_simulacion = excluded.id_simulacion,
+  intento = excluded.intento,
+  respuestas = excluded.respuestas,
+  puntaje = excluded.puntaje,
+  nota = excluded.nota,
+  retroalimentacion = excluded.retroalimentacion,
+  corregida_por = excluded.corregida_por,
+  fecha_correccion = excluded.fecha_correccion;
+
+insert into public.imprevistos_simulacion (
+  id_imprevisto, id_simulacion, id_profesor, tipo_imprevisto,
+  descripcion, area_afectada, estado, impacto, fecha_activacion
+) values (
+  '00000000-0000-7000-8000-000000000001',
+  '00000000-0000-6700-8000-000000000001',
+  '00000000-0000-6200-8000-000000000001',
+  'falla_stock',
+  'Bodega informa menor disponibilidad de lomo para el ultimo bloque de servicio.',
+  'bodega',
+  'activo',
+  '{"stock_requerido":"12 porciones","stock_disponible":"10 porciones","decision_esperada":"ajustar carta y avisar salon"}'::jsonb,
+  now() - interval '18 minutes'
+)
+on conflict (id_imprevisto) do update set
+  id_simulacion = excluded.id_simulacion,
+  id_profesor = excluded.id_profesor,
+  tipo_imprevisto = excluded.tipo_imprevisto,
+  descripcion = excluded.descripcion,
+  area_afectada = excluded.area_afectada,
+  estado = excluded.estado,
+  impacto = excluded.impacto,
+  fecha_activacion = excluded.fecha_activacion;
+
+insert into public.feedback_comensal (
+  id_feedback, id_simulacion, id_venta, mesa, nombre_comensal,
+  puntuacion_atencion, puntuacion_sabor, puntuacion_presentacion,
+  puntuacion_tiempo, puntuacion_limpieza, puntuacion_experiencia, comentario
+) values
+  ('00000000-0000-7100-8000-000000000001', '00000000-0000-6700-8000-000000000001', '00000000-0000-4800-8000-000000000001', '2', 'Comensal mesa 2', 5, 4, 4, 4, 5, 4, 'Buena atencion, plato principal llego con espera razonable.'),
+  ('00000000-0000-7100-8000-000000000002', '00000000-0000-6700-8000-000000000001', '00000000-0000-4800-8000-000000000003', '7', 'Comensal mesa 7', 4, 5, 5, 5, 5, 5, 'Servicio fluido y buena presentacion de entrada fria.')
+on conflict (id_feedback) do update set
+  id_simulacion = excluded.id_simulacion,
+  id_venta = excluded.id_venta,
+  mesa = excluded.mesa,
+  nombre_comensal = excluded.nombre_comensal,
+  puntuacion_atencion = excluded.puntuacion_atencion,
+  puntuacion_sabor = excluded.puntuacion_sabor,
+  puntuacion_presentacion = excluded.puntuacion_presentacion,
+  puntuacion_tiempo = excluded.puntuacion_tiempo,
+  puntuacion_limpieza = excluded.puntuacion_limpieza,
+  puntuacion_experiencia = excluded.puntuacion_experiencia,
+  comentario = excluded.comentario;
+
+insert into public.trazabilidad_academica (
+  id_trazabilidad, id_perfil, id_simulacion, id_clase, rol,
+  modulo, accion, entidad, id_entidad, valor_anterior, valor_nuevo,
+  observacion, fecha_hora
+) values
+  (
+    '00000000-0000-7200-8000-000000000001',
+    '00000000-0000-6200-8000-000000000005',
+    '00000000-0000-6700-8000-000000000001',
+    '00000000-0000-6600-8000-000000000001',
+    'alumno',
+    'bodega',
+    'registrar_merma',
+    'raw_materials',
+    '00000000-0000-4300-8000-000000000005',
+    '{"stock":"2920 g"}'::jsonb,
+    '{"stock":"2600 g","merma":"320 g"}'::jsonb,
+    'Merma de palta por madurez avanzada.',
+    now() - interval '2 hours'
+  ),
+  (
+    '00000000-0000-7200-8000-000000000002',
+    '00000000-0000-6200-8000-000000000003',
+    '00000000-0000-6700-8000-000000000001',
+    '00000000-0000-6600-8000-000000000001',
+    'alumno',
+    'salon',
+    'crear_pedido',
+    'orders',
+    '00000000-0000-4800-8000-000000000001',
+    null,
+    '{"mesa":2,"total":42600}'::jsonb,
+    'Pedido creado desde flujo de salon.',
+    now() - interval '26 minutes'
+  ),
+  (
+    '00000000-0000-7200-8000-000000000003',
+    '00000000-0000-6200-8000-000000000001',
+    '00000000-0000-6700-8000-000000000001',
+    '00000000-0000-6600-8000-000000000001',
+    'profesor',
+    'simulacion',
+    'activar_imprevisto',
+    'imprevistos_simulacion',
+    '00000000-0000-7000-8000-000000000001',
+    null,
+    '{"tipo":"falla_stock","area":"bodega"}'::jsonb,
+    'Profesor activa imprevisto de stock para medir respuesta del equipo.',
+    now() - interval '18 minutes'
+  )
+on conflict (id_trazabilidad) do update set
+  id_perfil = excluded.id_perfil,
+  id_simulacion = excluded.id_simulacion,
+  id_clase = excluded.id_clase,
+  rol = excluded.rol,
+  modulo = excluded.modulo,
+  accion = excluded.accion,
+  entidad = excluded.entidad,
+  id_entidad = excluded.id_entidad,
+  valor_anterior = excluded.valor_anterior,
+  valor_nuevo = excluded.valor_nuevo,
+  observacion = excluded.observacion,
+  fecha_hora = excluded.fecha_hora;
+
+update public.orders
+set id_simulacion = '00000000-0000-6700-8000-000000000001'
+where id in (
+  '00000000-0000-4800-8000-000000000001',
+  '00000000-0000-4800-8000-000000000002',
+  '00000000-0000-4800-8000-000000000003'
+);
+
+update public.order_items
+set id_simulacion = '00000000-0000-6700-8000-000000000001'
+where order_id in (
+  '00000000-0000-4800-8000-000000000001',
+  '00000000-0000-4800-8000-000000000002',
+  '00000000-0000-4800-8000-000000000003'
+);
+
+update public.inventory_movements
+set id_simulacion = '00000000-0000-6700-8000-000000000001'
+where id in (
+  '00000000-0000-4d00-8000-000000000001',
+  '00000000-0000-4d00-8000-000000000002',
+  '00000000-0000-4d00-8000-000000000003'
+);
+
+update public.cash_registers
+set id_simulacion = '00000000-0000-6700-8000-000000000001'
+where id = '00000000-0000-4b00-8000-000000000001';
+
+update public.cash_movements
+set id_simulacion = '00000000-0000-6700-8000-000000000001'
+where cash_register_id = '00000000-0000-4b00-8000-000000000001';
+
+update public.operational_documents
+set id_simulacion = '00000000-0000-6700-8000-000000000001'
+where order_id in (
+  '00000000-0000-4800-8000-000000000001',
+  '00000000-0000-4800-8000-000000000003'
+);
+
 insert into public.settings (
   key, value, updated_by, updated_at
 ) values (
@@ -945,3 +1431,12 @@ on conflict (id) do update set
   summary = excluded.summary,
   metadata = excluded.metadata,
   created_at = excluded.created_at;
+
+update public.audit_logs
+set id_simulacion = '00000000-0000-6700-8000-000000000001'
+where entity_id in (
+  '00000000-0000-4800-8000-000000000001',
+  '00000000-0000-4800-8000-000000000003',
+  '00000000-0000-4300-8000-000000000005',
+  '00000000-0000-4300-8000-000000000002'
+);

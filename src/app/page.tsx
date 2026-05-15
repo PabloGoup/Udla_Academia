@@ -1,6 +1,6 @@
-import { RestaurantPlatform } from "@/components/restaurant-platform";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <RestaurantPlatform />;
+  redirect("/academico");
 }
 

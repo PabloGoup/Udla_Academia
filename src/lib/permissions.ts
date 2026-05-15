@@ -2,6 +2,31 @@ import type { ModuleId, Permission, RoleId, RoleProfile } from "@/lib/types";
 
 export const roleProfiles: RoleProfile[] = [
   {
+    id: "master",
+    label: "Maestro",
+    description:
+      "Creador de la app con control total operativo, academico y gestion de perfiles.",
+    permissions: [
+      "dashboard:read",
+      "tables:manage",
+      "orders:manage",
+      "kitchen:manage",
+      "cash:manage",
+      "products:manage",
+      "recipes:manage",
+      "documents:manage",
+      "inventory:manage",
+      "purchases:manage",
+      "crm:manage",
+      "reports:read",
+      "food-safety:manage",
+      "employees:manage",
+      "audit:read",
+      "settings:manage",
+      "education:read",
+    ],
+  },
+  {
     id: "administrator",
     label: "Administrador",
     description: "Control total de configuracion, reportes, costos y usuarios.",

@@ -3,6 +3,7 @@ create extension if not exists pgcrypto;
 do $$
 begin
   create type public.app_role as enum (
+    'master',
     'administrator',
     'supervisor',
     'cashier',
@@ -123,6 +124,7 @@ immutable
 as $$
   select case
     when raw_role in (
+      'master',
       'administrator',
       'supervisor',
       'cashier',
@@ -984,6 +986,7 @@ begin
   current_role_text := public.current_app_role();
 
   if current_role_text in (
+    'master',
     'administrator',
     'supervisor',
     'cashier',
@@ -1053,7 +1056,7 @@ as $$
 declare
   target_recipe_id uuid;
 begin
-  if public.current_app_role() not in ('administrator', 'chef') then
+  if public.current_app_role() not in ('master', 'administrator', 'chef') then
     raise exception 'No autorizado para guardar recetas tecnicas';
   end if;
 
@@ -1203,6 +1206,7 @@ begin
       ri.raw_material_id,
       sum(oi.quantity * (ri.gross_quantity / nullif(r.portions, 0))) as used_quantity,
       max(o.order_number) as order_number,
+      max(o.id_simulacion) as id_simulacion,
       max(
         rm.purchase_cost /
         nullif(rm.purchase_quantity * (rm.average_yield_percent / 100), 0)
@@ -1220,6 +1224,7 @@ begin
   inserted as (
     insert into public.inventory_movements (
       raw_material_id,
+      id_simulacion,
       order_id,
       movement_type,
       quantity,
@@ -1229,6 +1234,7 @@ begin
     )
     select
       raw_material_id,
+      id_simulacion,
       target_order_id,
       'sale',
       -used_quantity,
@@ -1299,6 +1305,7 @@ declare
   real_net_unit_cost numeric(14,4);
 begin
   if public.current_app_role() not in (
+    'master',
     'administrator',
     'supervisor',
     'chef',
@@ -1420,6 +1427,7 @@ grant execute on function public.receive_purchase_inventory(
 
 insert into public.roles (id, name, description, permissions)
 values
+  ('master', 'Maestro', 'Creador de la app con control total y gestion de perfiles', '["*"]'),
   ('administrator', 'Administrador', 'Control total del sistema', '["*"]'),
   ('supervisor', 'Supervisor', 'Supervision operativa', '["dashboard:read","tables:manage","orders:manage","kitchen:manage","cash:manage","crm:manage","documents:manage","inventory:manage","reports:read","food-safety:manage","employees:manage","audit:read","settings:manage","education:read"]'),
   ('cashier', 'Cajero', 'Caja y pagos', '["dashboard:read","orders:manage","cash:manage","crm:manage","documents:manage","reports:read","education:read"]'),
@@ -1510,9 +1518,1011 @@ begin
 
     execute format('drop policy if exists "manager write" on public.%I', target_table);
     execute format(
-      'create policy "manager write" on public.%I for all to authenticated using (public.current_app_role() in (''administrator'', ''supervisor'', ''chef'', ''warehouse'', ''cashier'', ''waiter'', ''cook'')) with check (public.current_app_role() in (''administrator'', ''supervisor'', ''chef'', ''warehouse'', ''cashier'', ''waiter'', ''cook''))',
+      'create policy "manager write" on public.%I for all to authenticated using (public.current_app_role() in (''master'', ''administrator'', ''supervisor'', ''chef'', ''warehouse'', ''cashier'', ''waiter'', ''cook'')) with check (public.current_app_role() in (''master'', ''administrator'', ''supervisor'', ''chef'', ''warehouse'', ''cashier'', ''waiter'', ''cook''))',
       target_table
     );
+  end loop;
+end $$;
+
+-- Capa academica Plan 2: dominio persistente en espanol.
+-- Esta capa convive con el motor operativo existente y permite asociar
+-- cursos, clases, simulaciones, alumnos, roles, evaluaciones y trazabilidad.
+
+create or replace function public.set_fecha_actualizacion()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.fecha_actualizacion = now();
+  return new;
+end;
+$$;
+
+do $$
+begin
+  create type public.estado_simulacion as enum (
+    'creada',
+    'configurada',
+    'alumnos_asignados',
+    'productos_cargados',
+    'pre_servicio',
+    'servicio_activo',
+    'servicio_cerrado',
+    'reporte_generado',
+    'evaluacion_finalizada',
+    'archivada'
+  );
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  create type public.estado_pedido_academico as enum (
+    'pedido_recibido',
+    'en_preparacion',
+    'listo',
+    'entregado',
+    'observado',
+    'cancelado'
+  );
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  create type public.area_trabajo_academica as enum (
+    'bodega',
+    'cocina',
+    'bar',
+    'garzon',
+    'caja',
+    'pasteleria',
+    'supervision'
+  );
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  create type public.tipo_evaluacion_academica as enum (
+    'prueba',
+    'guia',
+    'caso_practico',
+    'rubrica',
+    'evaluacion_rol',
+    'evaluacion_grupal',
+    'evaluacion_individual'
+  );
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  create type public.tipo_imprevisto_simulacion as enum (
+    'falta_producto',
+    'producto_vencido',
+    'error_comanda',
+    'cliente_insatisfecho',
+    'demora_cocina',
+    'falla_stock',
+    'cambio_receta',
+    'problema_higiene',
+    'reclamo_cliente'
+  );
+exception when duplicate_object then null;
+end $$;
+
+create table if not exists public.instituciones (
+  id_institucion uuid primary key default gen_random_uuid(),
+  nombre_institucion text not null,
+  rut_institucion text,
+  sede text,
+  direccion text,
+  estado text not null default 'activa'
+    check (estado in ('activa', 'inactiva')),
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now()
+);
+
+create table if not exists public.perfiles_academicos (
+  id_perfil uuid primary key default gen_random_uuid(),
+  id_usuario uuid references public.users(id) on delete cascade,
+  id_institucion uuid references public.instituciones(id_institucion) on delete set null,
+  nombre_completo text not null,
+  correo text not null,
+  rol_academico text not null
+    check (rol_academico in ('administrador', 'profesor', 'alumno', 'comensal')),
+  identificador_institucional text,
+  seccion text,
+  estado text not null default 'activo'
+    check (estado in ('activo', 'inactivo', 'suspendido')),
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now(),
+  unique (id_usuario),
+  unique (id_institucion, correo)
+);
+
+create table if not exists public.cursos (
+  id_curso uuid primary key default gen_random_uuid(),
+  id_institucion uuid references public.instituciones(id_institucion) on delete cascade,
+  id_profesor uuid references public.perfiles_academicos(id_perfil) on delete set null,
+  nombre_curso text not null,
+  asignatura text not null,
+  codigo_curso text,
+  periodo text,
+  estado text not null default 'activo'
+    check (estado in ('borrador', 'activo', 'cerrado', 'archivado')),
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now()
+);
+
+create table if not exists public.secciones (
+  id_seccion uuid primary key default gen_random_uuid(),
+  id_curso uuid not null references public.cursos(id_curso) on delete cascade,
+  nombre_seccion text not null,
+  jornada text,
+  cupo integer not null default 0 check (cupo >= 0),
+  estado text not null default 'activa'
+    check (estado in ('activa', 'cerrada', 'archivada')),
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now(),
+  unique (id_curso, nombre_seccion)
+);
+
+create table if not exists public.matriculas (
+  id_matricula uuid primary key default gen_random_uuid(),
+  id_seccion uuid not null references public.secciones(id_seccion) on delete cascade,
+  id_alumno uuid not null references public.perfiles_academicos(id_perfil) on delete cascade,
+  estado text not null default 'activa'
+    check (estado in ('activa', 'retirada', 'aprobada', 'reprobada')),
+  fecha_creacion timestamptz not null default now(),
+  unique (id_seccion, id_alumno)
+);
+
+create table if not exists public.clases (
+  id_clase uuid primary key default gen_random_uuid(),
+  id_curso uuid not null references public.cursos(id_curso) on delete cascade,
+  id_seccion uuid references public.secciones(id_seccion) on delete set null,
+  id_profesor uuid references public.perfiles_academicos(id_perfil) on delete set null,
+  nombre_clase text not null,
+  fecha date not null,
+  objetivo text not null default '',
+  tipo_servicio text not null default '',
+  estado text not null default 'planificada'
+    check (estado in ('planificada', 'activa', 'cerrada', 'archivada')),
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now()
+);
+
+create table if not exists public.simulaciones (
+  id_simulacion uuid primary key default gen_random_uuid(),
+  id_clase uuid not null references public.clases(id_clase) on delete cascade,
+  nombre_simulacion text not null,
+  tipo_servicio text not null,
+  objetivo text not null default '',
+  estado public.estado_simulacion not null default 'creada',
+  duracion_estimada_minutos integer not null default 0 check (duracion_estimada_minutos >= 0),
+  fecha_inicio timestamptz,
+  fecha_cierre timestamptz,
+  configuracion jsonb not null default '{}'::jsonb,
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now()
+);
+
+create table if not exists public.areas_simulacion (
+  id_area_simulacion uuid primary key default gen_random_uuid(),
+  id_simulacion uuid not null references public.simulaciones(id_simulacion) on delete cascade,
+  area_trabajo public.area_trabajo_academica not null,
+  responsable uuid references public.perfiles_academicos(id_perfil) on delete set null,
+  estado text not null default 'pendiente'
+    check (estado in ('pendiente', 'lista', 'observada', 'cerrada')),
+  observacion text not null default '',
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now(),
+  unique (id_simulacion, area_trabajo)
+);
+
+create table if not exists public.grupos_trabajo (
+  id_grupo uuid primary key default gen_random_uuid(),
+  id_simulacion uuid not null references public.simulaciones(id_simulacion) on delete cascade,
+  nombre_grupo text not null,
+  observacion text not null default '',
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now(),
+  unique (id_simulacion, nombre_grupo)
+);
+
+create table if not exists public.integrantes_grupo (
+  id_integrante uuid primary key default gen_random_uuid(),
+  id_grupo uuid not null references public.grupos_trabajo(id_grupo) on delete cascade,
+  id_alumno uuid not null references public.perfiles_academicos(id_perfil) on delete cascade,
+  fecha_creacion timestamptz not null default now(),
+  unique (id_grupo, id_alumno)
+);
+
+create table if not exists public.roles_simulacion (
+  id_rol_simulacion uuid primary key default gen_random_uuid(),
+  id_simulacion uuid not null references public.simulaciones(id_simulacion) on delete cascade,
+  id_alumno uuid not null references public.perfiles_academicos(id_perfil) on delete cascade,
+  id_grupo uuid references public.grupos_trabajo(id_grupo) on delete set null,
+  rol_asignado text not null,
+  area_trabajo public.area_trabajo_academica not null,
+  permisos jsonb not null default '[]'::jsonb,
+  estado text not null default 'asignado'
+    check (estado in ('asignado', 'activo', 'cerrado')),
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now(),
+  unique (id_simulacion, id_alumno)
+);
+
+create table if not exists public.simulacion_recetas (
+  id_simulacion_receta uuid primary key default gen_random_uuid(),
+  id_simulacion uuid not null references public.simulaciones(id_simulacion) on delete cascade,
+  id_receta uuid not null references public.recipes(id) on delete restrict,
+  porciones_planificadas numeric(10,2) not null default 0 check (porciones_planificadas >= 0),
+  fecha_creacion timestamptz not null default now(),
+  unique (id_simulacion, id_receta)
+);
+
+create table if not exists public.simulacion_productos (
+  id_simulacion_producto uuid primary key default gen_random_uuid(),
+  id_simulacion uuid not null references public.simulaciones(id_simulacion) on delete cascade,
+  id_producto uuid not null references public.products(id) on delete restrict,
+  cantidad_planificada numeric(14,3) not null default 0 check (cantidad_planificada >= 0),
+  cantidad_recibida numeric(14,3) not null default 0 check (cantidad_recibida >= 0),
+  observacion text not null default '',
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now(),
+  unique (id_simulacion, id_producto)
+);
+
+create table if not exists public.evaluaciones (
+  id_evaluacion uuid primary key default gen_random_uuid(),
+  id_simulacion uuid references public.simulaciones(id_simulacion) on delete cascade,
+  id_clase uuid references public.clases(id_clase) on delete cascade,
+  id_profesor uuid references public.perfiles_academicos(id_perfil) on delete set null,
+  tipo_evaluacion public.tipo_evaluacion_academica not null,
+  titulo text not null,
+  descripcion text not null default '',
+  rol_objetivo text,
+  puntaje_maximo numeric(10,2) not null default 100 check (puntaje_maximo >= 0),
+  intentos_permitidos integer not null default 1 check (intentos_permitidos > 0),
+  tiempo_limite_minutos integer check (tiempo_limite_minutos is null or tiempo_limite_minutos > 0),
+  nota_automatica boolean not null default false,
+  correccion_manual boolean not null default true,
+  pauta jsonb not null default '{}'::jsonb,
+  estado text not null default 'borrador'
+    check (estado in ('borrador', 'publicada', 'cerrada', 'archivada')),
+  fecha_creacion timestamptz not null default now(),
+  fecha_actualizacion timestamptz not null default now(),
+  check (id_simulacion is not null or id_clase is not null)
+);
+
+create table if not exists public.respuestas_evaluacion (
+  id_respuesta uuid primary key default gen_random_uuid(),
+  id_evaluacion uuid not null references public.evaluaciones(id_evaluacion) on delete cascade,
+  id_alumno uuid not null references public.perfiles_academicos(id_perfil) on delete cascade,
+  id_simulacion uuid references public.simulaciones(id_simulacion) on delete cascade,
+  intento integer not null default 1 check (intento > 0),
+  respuestas jsonb not null default '{}'::jsonb,
+  puntaje numeric(10,2),
+  nota numeric(4,2),
+  retroalimentacion text not null default '',
+  corregida_por uuid references public.perfiles_academicos(id_perfil) on delete set null,
+  fecha_envio timestamptz not null default now(),
+  fecha_correccion timestamptz,
+  unique (id_evaluacion, id_alumno, intento)
+);
+
+create table if not exists public.imprevistos_simulacion (
+  id_imprevisto uuid primary key default gen_random_uuid(),
+  id_simulacion uuid not null references public.simulaciones(id_simulacion) on delete cascade,
+  id_profesor uuid references public.perfiles_academicos(id_perfil) on delete set null,
+  tipo_imprevisto public.tipo_imprevisto_simulacion not null,
+  descripcion text not null,
+  area_afectada public.area_trabajo_academica,
+  estado text not null default 'activo'
+    check (estado in ('activo', 'resuelto', 'cancelado')),
+  impacto jsonb not null default '{}'::jsonb,
+  fecha_activacion timestamptz not null default now(),
+  fecha_cierre timestamptz
+);
+
+create table if not exists public.feedback_comensal (
+  id_feedback uuid primary key default gen_random_uuid(),
+  id_simulacion uuid not null references public.simulaciones(id_simulacion) on delete cascade,
+  id_venta uuid references public.orders(id) on delete set null,
+  mesa text,
+  nombre_comensal text,
+  puntuacion_atencion integer not null check (puntuacion_atencion between 1 and 5),
+  puntuacion_sabor integer not null check (puntuacion_sabor between 1 and 5),
+  puntuacion_presentacion integer not null check (puntuacion_presentacion between 1 and 5),
+  puntuacion_tiempo integer not null check (puntuacion_tiempo between 1 and 5),
+  puntuacion_limpieza integer not null check (puntuacion_limpieza between 1 and 5),
+  puntuacion_experiencia integer not null check (puntuacion_experiencia between 1 and 5),
+  comentario text not null default '',
+  fecha_creacion timestamptz not null default now()
+);
+
+create table if not exists public.trazabilidad_academica (
+  id_trazabilidad uuid primary key default gen_random_uuid(),
+  id_usuario uuid references public.users(id) on delete set null,
+  id_perfil uuid references public.perfiles_academicos(id_perfil) on delete set null,
+  id_simulacion uuid references public.simulaciones(id_simulacion) on delete cascade,
+  id_clase uuid references public.clases(id_clase) on delete set null,
+  rol text,
+  modulo text not null,
+  accion text not null,
+  entidad text,
+  id_entidad text,
+  valor_anterior jsonb,
+  valor_nuevo jsonb,
+  observacion text not null default '',
+  fecha_hora timestamptz not null default now()
+);
+
+create index if not exists idx_perfiles_academicos_rol on public.perfiles_academicos(rol_academico);
+create index if not exists idx_cursos_profesor on public.cursos(id_profesor);
+create index if not exists idx_secciones_curso on public.secciones(id_curso);
+create index if not exists idx_matriculas_alumno on public.matriculas(id_alumno);
+create index if not exists idx_clases_curso_fecha on public.clases(id_curso, fecha);
+create index if not exists idx_simulaciones_clase_estado on public.simulaciones(id_clase, estado);
+create index if not exists idx_roles_simulacion_alumno on public.roles_simulacion(id_alumno);
+create index if not exists idx_evaluaciones_simulacion on public.evaluaciones(id_simulacion);
+create index if not exists idx_respuestas_evaluacion_alumno on public.respuestas_evaluacion(id_alumno);
+create index if not exists idx_imprevistos_simulacion_estado on public.imprevistos_simulacion(id_simulacion, estado);
+create index if not exists idx_feedback_comensal_simulacion on public.feedback_comensal(id_simulacion);
+create index if not exists idx_trazabilidad_academica_simulacion on public.trazabilidad_academica(id_simulacion, fecha_hora desc);
+create index if not exists idx_trazabilidad_academica_perfil on public.trazabilidad_academica(id_perfil, fecha_hora desc);
+
+create or replace function public.current_academic_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    auth.jwt() ->> 'academic_role',
+    auth.jwt() -> 'app_metadata' ->> 'academic_role',
+    (
+      select rol_academico
+      from public.perfiles_academicos
+      where id_usuario = auth.uid()
+        and estado = 'activo'
+      limit 1
+    ),
+    auth.jwt() ->> 'user_role',
+    auth.jwt() -> 'app_metadata' ->> 'role',
+    public.current_app_role(),
+    'anonymous'
+  );
+$$;
+
+grant execute on function public.current_academic_role() to anon, authenticated;
+
+-- Vinculos entre el motor operativo y la simulacion academica.
+alter table public.orders
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+alter table public.order_items
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+alter table public.kitchen_tickets
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+alter table public.inventory_movements
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+alter table public.cash_registers
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+alter table public.cash_movements
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+alter table public.purchases
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+alter table public.purchase_items
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+alter table public.food_safety_logs
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+alter table public.operational_documents
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+alter table public.reports
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+alter table public.audit_logs
+  add column if not exists id_simulacion uuid references public.simulaciones(id_simulacion) on delete set null;
+
+create index if not exists idx_orders_id_simulacion on public.orders(id_simulacion);
+create index if not exists idx_order_items_id_simulacion on public.order_items(id_simulacion);
+create index if not exists idx_kitchen_tickets_id_simulacion on public.kitchen_tickets(id_simulacion);
+create index if not exists idx_inventory_movements_id_simulacion on public.inventory_movements(id_simulacion);
+create index if not exists idx_cash_registers_id_simulacion on public.cash_registers(id_simulacion);
+create index if not exists idx_cash_movements_id_simulacion on public.cash_movements(id_simulacion);
+create index if not exists idx_purchases_id_simulacion on public.purchases(id_simulacion);
+create index if not exists idx_food_safety_logs_id_simulacion on public.food_safety_logs(id_simulacion);
+create index if not exists idx_operational_documents_id_simulacion on public.operational_documents(id_simulacion);
+create index if not exists idx_reports_id_simulacion on public.reports(id_simulacion);
+create index if not exists idx_audit_logs_id_simulacion on public.audit_logs(id_simulacion);
+
+create or replace function public.heredar_simulacion_desde_pedido()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.id_simulacion is null and new.order_id is not null then
+    select id_simulacion into new.id_simulacion
+    from public.orders
+    where id = new.order_id;
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.heredar_simulacion_desde_compra()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.id_simulacion is null and new.purchase_id is not null then
+    select id_simulacion into new.id_simulacion
+    from public.purchases
+    where id = new.purchase_id;
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.heredar_simulacion_movimiento_bodega()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.id_simulacion is null and new.order_id is not null then
+    select id_simulacion into new.id_simulacion
+    from public.orders
+    where id = new.order_id;
+  end if;
+
+  if new.id_simulacion is null and new.purchase_id is not null then
+    select id_simulacion into new.id_simulacion
+    from public.purchases
+    where id = new.purchase_id;
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.heredar_simulacion_documento()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.id_simulacion is null and new.order_id is not null then
+    select id_simulacion into new.id_simulacion
+    from public.orders
+    where id = new.order_id;
+  end if;
+
+  if new.id_simulacion is null and new.cash_register_id is not null then
+    select id_simulacion into new.id_simulacion
+    from public.cash_registers
+    where id = new.cash_register_id;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists set_order_items_id_simulacion on public.order_items;
+create trigger set_order_items_id_simulacion
+before insert or update on public.order_items
+for each row execute function public.heredar_simulacion_desde_pedido();
+
+drop trigger if exists set_kitchen_tickets_id_simulacion on public.kitchen_tickets;
+create trigger set_kitchen_tickets_id_simulacion
+before insert or update on public.kitchen_tickets
+for each row execute function public.heredar_simulacion_desde_pedido();
+
+drop trigger if exists set_cash_movements_id_simulacion on public.cash_movements;
+create trigger set_cash_movements_id_simulacion
+before insert or update on public.cash_movements
+for each row execute function public.heredar_simulacion_desde_pedido();
+
+drop trigger if exists set_inventory_movements_id_simulacion on public.inventory_movements;
+create trigger set_inventory_movements_id_simulacion
+before insert or update on public.inventory_movements
+for each row execute function public.heredar_simulacion_movimiento_bodega();
+
+drop trigger if exists set_purchase_items_id_simulacion on public.purchase_items;
+create trigger set_purchase_items_id_simulacion
+before insert or update on public.purchase_items
+for each row execute function public.heredar_simulacion_desde_compra();
+
+drop trigger if exists set_operational_documents_id_simulacion on public.operational_documents;
+create trigger set_operational_documents_id_simulacion
+before insert or update on public.operational_documents
+for each row execute function public.heredar_simulacion_documento();
+
+create or replace function public.registrar_trazabilidad_academica(
+  id_simulacion_input uuid,
+  modulo_input text,
+  accion_input text,
+  entidad_input text default null,
+  id_entidad_input text default null,
+  valor_anterior_input jsonb default null,
+  valor_nuevo_input jsonb default null,
+  observacion_input text default '',
+  id_perfil_input uuid default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  id_trazabilidad_creada uuid;
+  id_clase_actual uuid;
+  id_perfil_actual uuid;
+  rol_actual text;
+begin
+  if nullif(trim(modulo_input), '') is null then
+    raise exception 'El modulo es obligatorio';
+  end if;
+
+  if nullif(trim(accion_input), '') is null then
+    raise exception 'La accion es obligatoria';
+  end if;
+
+  select id_clase into id_clase_actual
+  from public.simulaciones
+  where id_simulacion = id_simulacion_input;
+
+  id_perfil_actual := id_perfil_input;
+
+  if id_perfil_actual is null and auth.uid() is not null then
+    select id_perfil, rol_academico
+    into id_perfil_actual, rol_actual
+    from public.perfiles_academicos
+    where id_usuario = auth.uid()
+    limit 1;
+  end if;
+
+  if rol_actual is null and id_perfil_actual is not null then
+    select rol_academico into rol_actual
+    from public.perfiles_academicos
+    where id_perfil = id_perfil_actual;
+  end if;
+
+  insert into public.trazabilidad_academica (
+    id_usuario,
+    id_perfil,
+    id_simulacion,
+    id_clase,
+    rol,
+    modulo,
+    accion,
+    entidad,
+    id_entidad,
+    valor_anterior,
+    valor_nuevo,
+    observacion
+  )
+  values (
+    auth.uid(),
+    id_perfil_actual,
+    id_simulacion_input,
+    id_clase_actual,
+    rol_actual,
+    trim(modulo_input),
+    trim(accion_input),
+    nullif(trim(coalesce(entidad_input, '')), ''),
+    nullif(trim(coalesce(id_entidad_input, '')), ''),
+    valor_anterior_input,
+    valor_nuevo_input,
+    coalesce(observacion_input, '')
+  )
+  returning id_trazabilidad into id_trazabilidad_creada;
+
+  return id_trazabilidad_creada;
+end;
+$$;
+
+grant execute on function public.registrar_trazabilidad_academica(
+  uuid,
+  text,
+  text,
+  text,
+  text,
+  jsonb,
+  jsonb,
+  text,
+  uuid
+) to authenticated;
+
+create or replace function public.actualizar_estado_simulacion(
+  id_simulacion_input uuid,
+  estado_input public.estado_simulacion,
+  observacion_input text default ''
+)
+returns public.simulaciones
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  simulacion_anterior public.simulaciones%rowtype;
+  simulacion_actualizada public.simulaciones%rowtype;
+begin
+  if public.current_academic_role() not in (
+    'master',
+    'maestro',
+    'administrator',
+    'administrador',
+    'supervisor',
+    'profesor'
+  ) then
+    raise exception 'No autorizado para cambiar el estado de la simulacion';
+  end if;
+
+  select * into simulacion_anterior
+  from public.simulaciones
+  where id_simulacion = id_simulacion_input
+  for update;
+
+  if not found then
+    raise exception 'No se encontro la simulacion academica';
+  end if;
+
+  update public.simulaciones
+  set estado = estado_input,
+      fecha_inicio = case
+        when estado_input = 'servicio_activo' and fecha_inicio is null then now()
+        else fecha_inicio
+      end,
+      fecha_cierre = case
+        when estado_input in (
+          'servicio_cerrado',
+          'reporte_generado',
+          'evaluacion_finalizada',
+          'archivada'
+        ) and fecha_cierre is null then now()
+        else fecha_cierre
+      end,
+      fecha_actualizacion = now()
+  where id_simulacion = id_simulacion_input
+  returning * into simulacion_actualizada;
+
+  perform public.registrar_trazabilidad_academica(
+    id_simulacion_input,
+    'simulacion',
+    'cambiar_estado',
+    'simulaciones',
+    id_simulacion_input::text,
+    jsonb_build_object('estado', simulacion_anterior.estado),
+    jsonb_build_object('estado', simulacion_actualizada.estado),
+    coalesce(
+      nullif(trim(observacion_input), ''),
+      'Cambio de estado de simulacion academica'
+    ),
+    null
+  );
+
+  return simulacion_actualizada;
+end;
+$$;
+
+grant execute on function public.actualizar_estado_simulacion(
+  uuid,
+  public.estado_simulacion,
+  text
+) to authenticated;
+
+create or replace function public.vincular_pedido_a_simulacion(
+  id_pedido_input uuid,
+  id_simulacion_input uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.orders
+  set id_simulacion = id_simulacion_input,
+      updated_at = now()
+  where id = id_pedido_input;
+
+  update public.order_items
+  set id_simulacion = id_simulacion_input,
+      updated_at = now()
+  where order_id = id_pedido_input;
+
+  update public.kitchen_tickets
+  set id_simulacion = id_simulacion_input
+  where order_id = id_pedido_input;
+
+  update public.cash_movements
+  set id_simulacion = id_simulacion_input
+  where order_id = id_pedido_input;
+
+  update public.inventory_movements
+  set id_simulacion = id_simulacion_input
+  where order_id = id_pedido_input;
+
+  update public.operational_documents
+  set id_simulacion = id_simulacion_input
+  where order_id = id_pedido_input;
+
+  update public.audit_logs
+  set id_simulacion = id_simulacion_input
+  where entity_id = id_pedido_input::text
+    or metadata ->> 'orderId' = id_pedido_input::text;
+
+  perform public.registrar_trazabilidad_academica(
+    id_simulacion_input,
+    'operacion',
+    'vincular_pedido',
+    'orders',
+    id_pedido_input::text,
+    null,
+    jsonb_build_object('id_simulacion', id_simulacion_input),
+    'Pedido operativo vinculado a simulacion academica',
+    null
+  );
+end;
+$$;
+
+grant execute on function public.vincular_pedido_a_simulacion(uuid, uuid) to authenticated;
+
+drop view if exists public.reporte_academico_simulacion;
+
+create or replace view public.reporte_academico_simulacion as
+with resumen_roles as (
+  select id_simulacion, count(distinct id_alumno) as alumnos_asignados
+  from public.roles_simulacion
+  group by id_simulacion
+),
+resumen_trazabilidad as (
+  select id_simulacion, count(*) as acciones_registradas
+  from public.trazabilidad_academica
+  group by id_simulacion
+),
+resumen_operacion as (
+  select
+    id_simulacion,
+    count(*) filter (where status <> 'cancelled') as pedidos_operativos,
+    coalesce(sum(total_amount) filter (where status <> 'cancelled'), 0) as venta_operativa_total
+  from public.orders
+  where id_simulacion is not null
+  group by id_simulacion
+),
+resumen_bodega as (
+  select id_simulacion, count(*) as movimientos_bodega
+  from public.inventory_movements
+  where id_simulacion is not null
+  group by id_simulacion
+),
+resumen_imprevistos as (
+  select
+    id_simulacion,
+    count(*) filter (where estado = 'activo') as imprevistos_activos,
+    count(*) as imprevistos_totales
+  from public.imprevistos_simulacion
+  group by id_simulacion
+),
+resumen_feedback as (
+  select
+    id_simulacion,
+    count(*) as feedbacks_comensal,
+    avg((
+      puntuacion_atencion +
+      puntuacion_sabor +
+      puntuacion_presentacion +
+      puntuacion_tiempo +
+      puntuacion_limpieza +
+      puntuacion_experiencia
+    ) / 6.0) as satisfaccion_promedio
+  from public.feedback_comensal
+  group by id_simulacion
+),
+resumen_evaluaciones as (
+  select id_simulacion, count(*) as respuestas_evaluacion
+  from public.respuestas_evaluacion
+  where id_simulacion is not null
+  group by id_simulacion
+)
+select
+  s.id_simulacion,
+  s.nombre_simulacion,
+  s.estado,
+  c.nombre_clase,
+  cu.nombre_curso,
+  coalesce(rr.alumnos_asignados, 0) as alumnos_asignados,
+  coalesce(rt.acciones_registradas, 0) as acciones_registradas,
+  coalesce(ro.pedidos_operativos, 0) as pedidos_operativos,
+  coalesce(ro.venta_operativa_total, 0) as venta_operativa_total,
+  coalesce(rb.movimientos_bodega, 0) as movimientos_bodega,
+  coalesce(ri.imprevistos_activos, 0) as imprevistos_activos,
+  coalesce(ri.imprevistos_totales, 0) as imprevistos_totales,
+  coalesce(rf.feedbacks_comensal, 0) as feedbacks_comensal,
+  rf.satisfaccion_promedio,
+  coalesce(re.respuestas_evaluacion, 0) as respuestas_evaluacion
+from public.simulaciones s
+join public.clases c on c.id_clase = s.id_clase
+join public.cursos cu on cu.id_curso = c.id_curso
+left join resumen_roles rr on rr.id_simulacion = s.id_simulacion
+left join resumen_trazabilidad rt on rt.id_simulacion = s.id_simulacion
+left join resumen_operacion ro on ro.id_simulacion = s.id_simulacion
+left join resumen_bodega rb on rb.id_simulacion = s.id_simulacion
+left join resumen_imprevistos ri on ri.id_simulacion = s.id_simulacion
+left join resumen_feedback rf on rf.id_simulacion = s.id_simulacion
+left join resumen_evaluaciones re on re.id_simulacion = s.id_simulacion;
+
+do $$
+declare
+  target_table text;
+begin
+  foreach target_table in array array[
+    'instituciones',
+    'perfiles_academicos',
+    'cursos',
+    'secciones',
+    'matriculas',
+    'clases',
+    'simulaciones',
+    'areas_simulacion',
+    'grupos_trabajo',
+    'integrantes_grupo',
+    'roles_simulacion',
+    'simulacion_recetas',
+    'simulacion_productos',
+    'evaluaciones',
+    'respuestas_evaluacion',
+    'imprevistos_simulacion',
+    'feedback_comensal',
+    'trazabilidad_academica'
+  ]
+  loop
+    execute format('alter table public.%I enable row level security', target_table);
+
+    execute format('drop policy if exists "lectura autenticada" on public.%I', target_table);
+    execute format(
+      'create policy "lectura autenticada" on public.%I for select to authenticated using (true)',
+      target_table
+    );
+
+    execute format('drop policy if exists "escritura academica" on public.%I', target_table);
+    execute format(
+      'create policy "escritura academica" on public.%I for all to authenticated using (public.current_academic_role() in (''master'', ''maestro'', ''administrator'', ''administrador'', ''supervisor'', ''profesor'')) with check (public.current_academic_role() in (''master'', ''maestro'', ''administrator'', ''administrador'', ''supervisor'', ''profesor''))',
+      target_table
+    );
+  end loop;
+end $$;
+
+drop policy if exists "alumno registra respuesta" on public.respuestas_evaluacion;
+create policy "alumno registra respuesta"
+on public.respuestas_evaluacion
+for insert
+to authenticated
+with check (
+  public.current_academic_role() in ('alumno', 'profesor', 'master', 'maestro', 'administrator', 'administrador', 'supervisor')
+);
+
+drop policy if exists "alumno registra trazabilidad" on public.trazabilidad_academica;
+create policy "alumno registra trazabilidad"
+on public.trazabilidad_academica
+for insert
+to authenticated
+with check (
+  public.current_academic_role() in ('alumno', 'profesor', 'master', 'maestro', 'administrator', 'administrador', 'supervisor')
+);
+
+drop policy if exists "feedback publico comensal" on public.feedback_comensal;
+create policy "feedback publico comensal"
+on public.feedback_comensal
+for insert
+to anon
+with check (true);
+
+do $$
+declare
+  target_table text;
+begin
+  foreach target_table in array array[
+    'instituciones',
+    'perfiles_academicos',
+    'cursos',
+    'secciones',
+    'matriculas',
+    'clases',
+    'simulaciones',
+    'areas_simulacion',
+    'grupos_trabajo',
+    'integrantes_grupo',
+    'roles_simulacion',
+    'simulacion_recetas',
+    'simulacion_productos',
+    'evaluaciones',
+    'respuestas_evaluacion',
+    'imprevistos_simulacion',
+    'feedback_comensal',
+    'trazabilidad_academica'
+  ]
+  loop
+    execute format('drop policy if exists "lectura anon demo" on public.%I', target_table);
+    execute format(
+      'create policy "lectura anon demo" on public.%I for select to anon using (true)',
+      target_table
+    );
+  end loop;
+end $$;
+
+do $$
+declare
+  target_table text;
+begin
+  foreach target_table in array array[
+    'instituciones',
+    'perfiles_academicos',
+    'cursos',
+    'secciones',
+    'clases',
+    'simulaciones',
+    'areas_simulacion',
+    'grupos_trabajo',
+    'roles_simulacion',
+    'evaluaciones',
+    'imprevistos_simulacion',
+    'simulacion_productos'
+  ]
+  loop
+    execute format('drop trigger if exists set_%I_fecha_actualizacion on public.%I', target_table, target_table);
+    execute format(
+      'create trigger set_%I_fecha_actualizacion before update on public.%I for each row execute function public.set_fecha_actualizacion()',
+      target_table,
+      target_table
+    );
+  end loop;
+end $$;
+
+do $$
+declare
+  target_table text;
+begin
+  foreach target_table in array array[
+    'instituciones',
+    'perfiles_academicos',
+    'cursos',
+    'secciones',
+    'matriculas',
+    'clases',
+    'simulaciones',
+    'areas_simulacion',
+    'grupos_trabajo',
+    'integrantes_grupo',
+    'roles_simulacion',
+    'simulacion_recetas',
+    'simulacion_productos',
+    'evaluaciones',
+    'respuestas_evaluacion',
+    'imprevistos_simulacion',
+    'feedback_comensal',
+    'trazabilidad_academica'
+  ]
+  loop
+    begin
+      execute format('alter publication supabase_realtime add table public.%I', target_table);
+    exception when duplicate_object or undefined_object then null;
+    end;
   end loop;
 end $$;
 
@@ -1556,7 +2566,7 @@ declare
   target_table text;
   roles_clause text;
 begin
-  roles_clause := '''administrator'', ''supervisor''';
+  roles_clause := '''master'', ''administrator'', ''supervisor''';
   foreach target_table in array array['roles', 'users', 'employees', 'settings']
   loop
     execute format('drop policy if exists "manager write" on public.%I', target_table);
@@ -1569,7 +2579,7 @@ begin
     );
   end loop;
 
-  roles_clause := '''administrator'', ''supervisor'', ''waiter''';
+  roles_clause := '''master'', ''administrator'', ''supervisor'', ''waiter''';
   foreach target_table in array array['tables']
   loop
     execute format('drop policy if exists "manager write" on public.%I', target_table);
@@ -1582,7 +2592,7 @@ begin
     );
   end loop;
 
-  roles_clause := '''administrator'', ''supervisor'', ''waiter'', ''cashier'', ''cook'', ''chef''';
+  roles_clause := '''master'', ''administrator'', ''supervisor'', ''waiter'', ''cashier'', ''cook'', ''chef''';
   foreach target_table in array array['orders', 'order_items', 'kitchen_tickets', 'operational_documents']
   loop
     execute format('drop policy if exists "manager write" on public.%I', target_table);
@@ -1595,7 +2605,7 @@ begin
     );
   end loop;
 
-  roles_clause := '''administrator'', ''chef''';
+  roles_clause := '''master'', ''administrator'', ''chef''';
   foreach target_table in array array['products', 'product_categories', 'recipes', 'recipe_ingredients']
   loop
     execute format('drop policy if exists "manager write" on public.%I', target_table);
@@ -1608,7 +2618,7 @@ begin
     );
   end loop;
 
-  roles_clause := '''administrator'', ''supervisor'', ''chef'', ''warehouse''';
+  roles_clause := '''master'', ''administrator'', ''supervisor'', ''chef'', ''warehouse''';
   foreach target_table in array array[
     'raw_materials',
     'inventory_movements',
@@ -1628,7 +2638,7 @@ begin
     );
   end loop;
 
-  roles_clause := '''administrator'', ''supervisor'', ''cashier''';
+  roles_clause := '''master'', ''administrator'', ''supervisor'', ''cashier''';
   foreach target_table in array array['cash_registers', 'cash_movements']
   loop
     execute format('drop policy if exists "manager write" on public.%I', target_table);
@@ -1641,7 +2651,7 @@ begin
     );
   end loop;
 
-  roles_clause := '''administrator'', ''supervisor'', ''waiter'', ''cashier''';
+  roles_clause := '''master'', ''administrator'', ''supervisor'', ''waiter'', ''cashier''';
   foreach target_table in array array['customers', 'reservations', 'customer_interactions']
   loop
     execute format('drop policy if exists "manager write" on public.%I', target_table);
@@ -1654,7 +2664,7 @@ begin
     );
   end loop;
 
-  roles_clause := '''administrator'', ''supervisor'', ''chef'', ''warehouse'', ''cashier''';
+  roles_clause := '''master'', ''administrator'', ''supervisor'', ''chef'', ''warehouse'', ''cashier''';
   foreach target_table in array array['reports']
   loop
     execute format('drop policy if exists "manager write" on public.%I', target_table);
