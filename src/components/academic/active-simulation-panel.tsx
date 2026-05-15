@@ -61,7 +61,7 @@ export function ActiveSimulationPanel({
   );
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-4 overflow-x-hidden animate-in fade-in duration-500 sm:gap-6">
+    <div className="flex w-full min-w-0 max-w-none flex-col items-stretch gap-4 overflow-visible animate-in fade-in duration-500 sm:gap-6">
       {/* Resumen de Métricas */}
       <div className="grid min-w-0 grid-cols-4 gap-2 overflow-hidden sm:gap-4">
         <MetricCard 
@@ -90,16 +90,16 @@ export function ActiveSimulationPanel({
         />
       </div>
 
-      <div className="grid w-full min-w-0 gap-4 overflow-hidden lg:grid-cols-12 lg:items-start sm:gap-6">
+      <div className="grid w-full min-w-0 max-w-none items-stretch gap-4 overflow-visible max-sm:justify-items-center lg:grid-cols-12 lg:items-start sm:gap-6">
         {/* Columna Principal: Estado y Roles */}
-        <div className="flex w-full min-w-0 flex-col gap-4 overflow-hidden lg:col-span-8 sm:gap-6">
-          <AcademicCard className="border-t-4 border-t-emerald-500">
+        <div className="flex w-full min-w-0 max-w-none flex-col items-stretch gap-4 overflow-visible max-sm:items-center lg:col-span-8 sm:gap-6">
+          <AcademicCard className="w-full max-w-none min-w-0 self-stretch max-sm:relative max-sm:left-1/2 max-sm:!w-[calc(100dvw-24px)] max-sm:!max-w-[calc(100dvw-24px)] max-sm:-translate-x-1/2 border-t-4 border-t-emerald-500 max-sm:rounded-xl">
             <AcademicCardHeader 
               title="Centro de Control de Simulación" 
               subtitle={`${report.nombre_curso} · ${report.nombre_clase}`}
               action={<StatusBadge label={report.estado.toUpperCase()} tone="emerald" />}
             />
-            <AcademicCardBody className="flex min-w-0 flex-col gap-4 overflow-hidden sm:gap-8">
+            <AcademicCardBody className="flex w-full min-w-0 max-w-none flex-col gap-4 overflow-visible max-sm:px-3 sm:gap-8">
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                   <LayoutDashboard className="h-3 w-3" /> Progreso de la Etapa
@@ -107,7 +107,7 @@ export function ActiveSimulationPanel({
                 <SimulationStageRail estado={report.estado} />
               </div>
 
-              <div className="grid min-w-0 gap-4 border-t border-slate-100 pt-4 dark:border-white/5 sm:grid-cols-2 sm:gap-6 sm:pt-6">
+              <div className="grid w-full min-w-0 max-w-none gap-4 border-t border-slate-100 pt-4 dark:border-white/5 sm:grid-cols-2 sm:gap-6 sm:pt-6">
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                     <Zap className="h-3 w-3 text-orange-500" /> Acciones de Estado
@@ -141,7 +141,7 @@ export function ActiveSimulationPanel({
             </AcademicCardBody>
           </AcademicCard>
 
-          <AcademicCard>
+          <AcademicCard className="w-full max-w-none min-w-0 self-stretch max-sm:relative max-sm:left-1/2 max-sm:!w-[calc(100dvw-24px)] max-sm:!max-w-[calc(100dvw-24px)] max-sm:-translate-x-1/2 max-sm:rounded-xl">
             <AcademicCardHeader
               title="Equipo de Trabajo"
               subtitle={`${detail.roles.length} alumnos en sus puestos operativos`}
@@ -151,8 +151,8 @@ export function ActiveSimulationPanel({
                 </span>
               }
             />
-            <AcademicCardBody className="p-0">
-              <div className="overflow-x-auto px-3 pb-4 pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-4">
+            <AcademicCardBody className="w-full p-0">
+              <div className="w-full overflow-x-auto px-3 pb-4 pt-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-4">
                 <div className="flex w-max gap-3">
                   {detail.roles.map((role) => (
                     <article
@@ -185,8 +185,8 @@ export function ActiveSimulationPanel({
         </div>
 
         {/* Columna Lateral: Imprevistos y Evaluaciones */}
-        <div className="flex w-full min-w-0 flex-col gap-4 overflow-hidden lg:col-span-4 sm:gap-6">
-          <AcademicCard className="border-l-4 border-l-amber-500">
+        <div className="flex w-full min-w-0 max-w-none flex-col items-stretch gap-4 overflow-visible max-sm:items-center lg:col-span-4 sm:gap-6">
+          <AcademicCard className="w-full max-w-none min-w-0 self-stretch max-sm:relative max-sm:left-1/2 max-sm:!w-[calc(100dvw-24px)] max-sm:!max-w-[calc(100dvw-24px)] max-sm:-translate-x-1/2 max-sm:rounded-xl border-l-4 border-l-amber-500">
             <AcademicCardHeader 
               title="Imprevistos Activos" 
               action={<AlertTriangle className="h-5 w-5 text-amber-500" />}
@@ -215,7 +215,9 @@ export function ActiveSimulationPanel({
             </AcademicCardBody>
           </AcademicCard>
 
-          <AcademicCard>
+          <AcademicCard className="w-full max-w-none min-w-0 self-stretch max-sm:relative max-sm:left-1/2 max-sm:!w-[calc(100dvw-24px)] max-sm:!max-w-[calc(100dvw-24px)] max-sm:-translate-x-1/2 max-sm:rounded-xl">
+            
+     
             <AcademicCardHeader 
               title="Evaluaciones" 
               action={<ListChecks className="h-5 w-5 text-sky-500" />}
@@ -248,8 +250,8 @@ export function ActiveSimulationPanel({
         </div>
 
         {/* Trazabilidad: Ancho completo al final */}
-        <div className="lg:col-span-12">
-          <AcademicCard>
+        <div className="flex w-full min-w-0 max-w-none flex-col items-stretch gap-4 overflow-visible max-sm:items-center lg:col-span-4 sm:gap-6">
+          <AcademicCard className="w-full max-w-none min-w-0 self-stretch max-sm:relative max-sm:left-1/2 max-sm:!w-[calc(100dvw-24px)] max-sm:!max-w-[calc(100dvw-24px)] max-sm:-translate-x-1/2 max-sm:rounded-xl">
             <AcademicCardHeader 
               title="Trazabilidad Académica" 
               subtitle="Registro histórico de acciones durante la simulación"

@@ -80,7 +80,7 @@ img {
     box-shadow: none;
   }
 }
-@media (max-width: 640px) {
+@media (max-width: 1000px) {
   .academic-mobile-safe,
   .academic-mobile-safe * {
     min-width: 0;

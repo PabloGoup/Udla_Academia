@@ -12,7 +12,7 @@ interface AcademicCardProps {
 export function AcademicCard({ children, className = "" }: AcademicCardProps) {
   return (
     <div
-      className={`min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-soft ring-1 ring-black/[0.03] transition-all hover:shadow-premium sm:rounded-2xl dark:border-white/10 dark:bg-white/[0.02] dark:ring-white/[0.02] ${className}`}
+      className={`w-full max-w-none min-w-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-soft ring-1 ring-black/[0.03] transition-all hover:shadow-premium sm:rounded-2xl dark:border-white/10 dark:bg-white/[0.02] dark:ring-white/[0.02] ${className}`}
     >
       {children}
     </div>
@@ -52,7 +52,13 @@ export function AcademicCardBody({
   children,
   className = "",
 }: AcademicCardBodyProps) {
-  return <div className={`min-w-0 px-3 py-3 sm:px-5 sm:py-4 ${className}`}>{children}</div>;
+  return (
+    <div
+      className={`w-full min-w-0 px-2 py-3 sm:px-5 sm:py-4 ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
 
 /* ───── StatusBadge ───── */
@@ -106,7 +112,7 @@ export function MetricCard({ label, value, icon, tone = "zinc" }: MetricCardProp
 
   return (
     <div
-      className={`col-span-1 flex min-w-0 flex-col gap-1 overflow-hidden rounded-lg border px-2 py-2 shadow-sm sm:rounded-2xl sm:px-4 sm:py-3 dark:bg-white/[0.03] ${borderMap[tone]}`}
+      className={`col-span-1 w-full min-w-0 flex flex-col gap-1 overflow-hidden rounded-lg border px-2 py-2 shadow-sm sm:rounded-2xl sm:px-4 sm:py-3 dark:bg-white/[0.03] ${borderMap[tone]}`}
     >
       <div className="flex min-w-0 items-center gap-1 text-[7px] font-bold uppercase leading-tight tracking-wide text-slate-400 sm:gap-2 sm:text-[10px] sm:tracking-widest dark:text-slate-500">
         {icon}
@@ -268,7 +274,7 @@ export function Modal({
         onClick={onClose}
       />
       <div
-        className={`relative w-full ${maxWidth} overflow-hidden rounded-[2rem] border border-white/20 bg-white/90 shadow-premium backdrop-blur-xl dark:border-white/10 dark:bg-[#141922]/90`}
+        className={`relative w-full max-w-none sm:${maxWidth} overflow-hidden rounded-[1.25rem] sm:rounded-[2rem] border border-white/20 bg-white/90 shadow-premium backdrop-blur-xl dark:border-white/10 dark:bg-[#141922]/90`}
       >
         <div className="flex items-center justify-between border-b border-slate-200/50 px-6 py-5 dark:border-white/10">
           <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight uppercase">{title}</h2>
@@ -282,7 +288,7 @@ export function Modal({
             </svg>
           </button>
         </div>
-        <div className={`max-h-[80vh] overflow-y-auto px-6 py-6 ${bodyClassName}`}>
+        <div className={`max-h-[80vh] overflow-y-auto px-3 py-4 sm:px-6 sm:py-6 ${bodyClassName}`}>
           {children}
         </div>
       </div>
